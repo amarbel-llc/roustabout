@@ -165,10 +165,9 @@ roustabout, not its owner.
 purse-first's go-mcp `command` framework with one verb, `version`. No graph
 document parser, no node runner, no run ledger, no signing.
 
-**Open questions** (FDR-0043, verbatim):
+**Open questions** (FDR-0043, verbatim, minus "language and framework": this
+scaffold settles that one as Go on purse-first's go-mcp):
 
-- Language and framework: Go on purse-first's go-mcp like juggler is the
-  obvious choice; not decided.
 - The exact split between a roustabout run and a juggler run: whether a
   graph's root principal is minted by roustabout (one root per graph run,
   nodes as children) or whether each agent node is its own juggler run
