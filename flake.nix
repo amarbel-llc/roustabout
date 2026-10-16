@@ -5,7 +5,9 @@
     # conformist provides the linter/formatter multiplexer, its Nix module
     # library (conformist.lib), and the eng-convention presets. Following its
     # nixpkgs-master/utils pins keeps this flake's closure shared with conformist's.
-    conformist.url = "git+https://code.linenisgreat.com/conformist.git";
+    conformist.url = "https://code.linenisgreat.com/conformist/archive/master.tar.gz";
+    conformist.inputs.igloo.follows = "igloo";
+    conformist.inputs.nixpkgs-master.follows = "nixpkgs-master";
     nixpkgs.follows = "conformist/nixpkgs-master";
     utils.follows = "conformist/utils";
 
@@ -18,10 +20,13 @@
     # flake-utils / conformist inputs follow this flake's so the closure stays
     # shared; its `bats` input deliberately keeps its own pin (see just-us's
     # flake.nix) and is unused here.
-    just-us.url = "git+https://code.linenisgreat.com/just-us.git";
+    just-us.url = "https://code.linenisgreat.com/just-us/archive/master.tar.gz";
     just-us.inputs.nixpkgs.follows = "nixpkgs";
     just-us.inputs.flake-utils.follows = "utils";
     just-us.inputs.conformist.follows = "conformist";
+    just-us.inputs.igloo.follows = "igloo";
+    just-us.inputs.nixpkgs-master.follows = "nixpkgs-master";
+    just-us.inputs.clown.inputs.purse-first.follows = "purse-first";
 
     # igloo carries the Go build helpers: godyn (buildGoAuto, the go.nix
     # manifest, godyn-go / godyn-test) and mkGoPkgs. See godyn(7).
@@ -36,6 +41,7 @@
     purse-first.inputs.nixpkgs-master.follows = "nixpkgs";
     purse-first.inputs.utils.follows = "utils";
     purse-first.inputs.conformist.follows = "conformist";
+    nixpkgs-master.url = "github:NixOS/nixpkgs/b4fd65b198c599cbe814fcb9f42d25d021595ec9";
   };
 
   outputs =
@@ -47,6 +53,7 @@
       utils,
       igloo,
       purse-first,
+      ...
     }:
     utils.lib.eachDefaultSystem (
       system:
