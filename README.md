@@ -9,6 +9,26 @@ here from circus.
 
 ## What it is
 
+roustabout is two things and nothing else.
+
+1. **A grammar for workflows.** The alphabet is node kinds (agents,
+   decisions, scripts, and later the gates and `switch`); the rules say which
+   shapes are well-formed; a workflow document is a content-addressed sentence
+   of the grammar.
+2. **An interpreter for sentences.** It walks a document node by node (agents
+   through juggler, scripts through ringmaster), takes the edge each outcome
+   names, and keeps one ledger entry per node. It is strictly scoped (a node
+   gets only what its kind and the document declare; a write tool is conferred
+   on one node and never held by the interpreter) and deterministic (what runs
+   next is a function of the document and the outcome; an agent's output is
+   not).
+
+Outside roustabout: who may pin which grammar, the trusted value a `switch`
+reads (principals), and who writes grammars and sentences (the host). Today
+only the issue-filer sentence is accepted; `docs/generalizing-the-graph.md`
+records the decisions (circus FDR-0043 18 to 22) for generalizing it, none of
+which is implemented.
+
 circus FDR-0041 builds a graph of agents and scripts (drafter, Jev judge,
 commit, sink) as a bash glue in circus that accepts exactly one graph shape.
 FDR-0042 wants three more graphs (attestation, release, post-merge targets).
@@ -56,10 +76,12 @@ issue-filer graph down as exactly this shape today:
   condition under which the edge is taken (`"ok"` or `"fail"`), and the node
   id it leads to.
 - The **judge's threshold** is the `decide` node's `min_confidence`, a plain
-  number. The **six question names** a judge node answers against are
-  exactly `clean`, `complete`, `dup`, `faithful`, `repo`, `request` (circus
-  `infra/hosts/krone/issue-filer/CONTRACT.md`); a graph whose questions file
-  does not have exactly these six keys is not this shape.
+  number. The **question names** a judge node answers against are the keys of
+  the graph's `questions.json` (circus owns the set and the names; roustabout
+  fixes none), the node's `modes` must cover exactly those keys, and its
+  `gate` must name one of them (the question handed to `juggler decide
+  --question`); a graph whose judge names no gate, or a gate that is not a
+  question, is refused.
 - The **graph's own digest** (`graph.digest`) is `sha256:<hex>` of the raw
   bytes of `graph.json` — the one value a run names to say exactly what
   graph it ran.
