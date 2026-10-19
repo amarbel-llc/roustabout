@@ -22,6 +22,7 @@ type fixture struct {
 	brief     string
 	review    string
 	badDigest bool
+	runtime   any
 }
 
 func newFixture() *fixture {
@@ -63,7 +64,11 @@ func (f *fixture) fs(t *testing.T) fstest.MapFS {
 	for _, e := range f.edges {
 		edges = append(edges, [3]string{ids[e[0]], e[1], ids[e[2]]})
 	}
-	raw, err := json.Marshal(map[string]any{"schema": 1, "review": f.review, "nodes": nodes, "edges": edges})
+	doc := map[string]any{"schema": 1, "review": f.review, "nodes": nodes, "edges": edges}
+	if f.runtime != nil {
+		doc["runtime"] = f.runtime
+	}
+	raw, err := json.Marshal(doc)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,6 +102,51 @@ func TestLoadValid(t *testing.T) {
 	}
 	if g.Draft().Label != "draft" || g.Commit().Program != testCommit {
 		t.Fatal("nodes not found by label")
+	}
+}
+
+// circus#314: the document names its runtime, and the digest covers it.
+func TestLoadRuntime(t *testing.T) {
+	withoutRuntime, err := Load(newFixture().fs(t), Expect{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if withoutRuntime.Runtime != nil {
+		t.Fatal("a document that names no runtime has none")
+	}
+	f := newFixture()
+	f.runtime = map[string]string{"juggler": "/nix/store/aaa-clown/bin/juggler", "moxy": "/nix/store/bbb-moxy", "glue": "/nix/store/ccc-roustabout"}
+	g, err := Load(f.fs(t), Expect{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if g.Runtime == nil || g.Runtime.Juggler != "/nix/store/aaa-clown/bin/juggler" || g.Runtime.Glue != "/nix/store/ccc-roustabout" {
+		t.Fatalf("%+v", g.Runtime)
+	}
+	// Two graphs that differ only in the clown build are two graphs.
+	f.runtime = map[string]string{"juggler": "/nix/store/zzz-clown/bin/juggler", "moxy": "/nix/store/bbb-moxy", "glue": "/nix/store/ccc-roustabout"}
+	other, err := Load(f.fs(t), Expect{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if other.Digest == g.Digest {
+		t.Fatal("the digest should cover the runtime")
+	}
+}
+
+func TestLoadRefusesAnIncompleteRuntime(t *testing.T) {
+	for name, rt := range map[string]any{
+		"no glue":       map[string]string{"juggler": "/j", "moxy": "/m"},
+		"empty moxy":    map[string]string{"juggler": "/j", "moxy": "", "glue": "/g"},
+		"unknown field": map[string]string{"juggler": "/j", "moxy": "/m", "glue": "/g", "clown": "/c"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newFixture()
+			f.runtime = rt
+			if _, err := Load(f.fs(t), Expect{}); err == nil {
+				t.Fatal("want refusal")
+			}
+		})
 	}
 }
 

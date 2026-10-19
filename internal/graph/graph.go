@@ -64,11 +64,23 @@ func (e Edge) From() string      { return e[0] }
 func (e Edge) Condition() string { return e[1] }
 func (e Edge) To() string        { return e[2] }
 
+// Runtime names the build that interprets the graph (circus#314): the juggler
+// store path (which pins the clown build and its commit), the moxy store path
+// the agents run under, and the glue's own, which is roustabout's build. It
+// is in graph.json, so the graph digest covers it: two graphs that differ only
+// in the clown build are two graphs.
+type Runtime struct {
+	Juggler string `json:"juggler"`
+	Moxy    string `json:"moxy"`
+	Glue    string `json:"glue"`
+}
+
 type document struct {
-	Schema int             `json:"schema"`
-	Review string          `json:"review"`
-	Nodes  map[string]Node `json:"nodes"`
-	Edges  []Edge          `json:"edges"`
+	Schema  int             `json:"schema"`
+	Review  string          `json:"review"`
+	Runtime *Runtime        `json:"runtime,omitempty"`
+	Nodes   map[string]Node `json:"nodes"`
+	Edges   []Edge          `json:"edges"`
 }
 
 // Graph is a validated issue-filer graph document.
@@ -76,6 +88,9 @@ type Graph struct {
 	// Digest is "sha256:<hex>" of the raw bytes of graph.json.
 	Digest string
 	Review string
+	// Runtime is the build the document names, or nil for a document that
+	// does not (the digest then does not cover the runtime).
+	Runtime *Runtime
 	// Nodes by id ("sha256:<hex>" of the node document).
 	Nodes map[string]Node
 	Edges []Edge
@@ -152,7 +167,10 @@ func Load(root fs.FS, expect Expect) (*Graph, error) {
 		return nil, refuse("graph.json: %v", err)
 	}
 
-	g := &Graph{Digest: declared, Review: doc.Review, Nodes: doc.Nodes, Edges: doc.Edges}
+	if rt := doc.Runtime; rt != nil && (rt.Juggler == "" || rt.Moxy == "" || rt.Glue == "") {
+		return nil, refuse("runtime must name the juggler, moxy and glue store paths")
+	}
+	g := &Graph{Digest: declared, Review: doc.Review, Runtime: doc.Runtime, Nodes: doc.Nodes, Edges: doc.Edges}
 	if err := g.validateShape(expect); err != nil {
 		return nil, err
 	}

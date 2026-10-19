@@ -1,11 +1,11 @@
 # roustabout
 
 roustabout is the graph runtime above juggler and ringmaster
-(circus `docs/features/0043-roustabout-the-graph-runtime.md`). Nothing is
-built yet beyond this scaffold: a Go module with one verb, `roustabout
-version`. This README records what the runtime is for, the shape of document
-it will interpret, and what moves here from circus, so that the FDR can move
-from `exploring` to `proposed`.
+(circus `docs/features/0043-roustabout-the-graph-runtime.md`). It runs the
+issue-filer graph document as `roustabout run GRAPH_DIR`, a port of circus's
+bash glue (see Status below for what is and is not done). This README records
+what the runtime is for, the shape of document it interprets, and what moves
+here from circus.
 
 ## What it is
 
@@ -161,9 +161,33 @@ roustabout, not its owner.
 - **moxy FDR 0013** (tool narrowing) and moxy#451 (tool kinds) are the basis
   of the per-node permission rules above.
 
-**Status:** nothing is built beyond this scaffold — a Go module on
-purse-first's go-mcp `command` framework with one verb, `version`. No graph
-document parser, no node runner, no run ledger, no signing.
+**Status:** a Go module on purse-first's go-mcp `command` framework.
+
+- Built and tested against fakes of every port, following the glue's
+  `test/scenarios.bash`: the graph document loader (`internal/graph`, one
+  shape, digests checked, an optional `runtime` object naming the juggler,
+  moxy and glue store paths so the digest covers them, circus#314); the
+  request parser and run key (`internal/request`); the result record, judge
+  verdicts, reasons, summary and exit codes (`internal/runrecord`); the
+  interpreter (`internal/run`): start, draft, freeze, store, judge, commit,
+  sink, the exit wake, resolve with retries, and the signal path; and
+  `roustabout run`.
+- Written but **never run against a live juggler, madder, troupe or
+  ringmaster**: the exec adapters (`internal/adapters`). They are tested only
+  against the test binary standing in for each program, with flags copied
+  from what the circus glue passes (clown 814d90a0). Script nodes (commit,
+  sink) run as ringmaster jobs through `ringmaster start` and `done`.
+- The summary carries a `ledger`: one entry per node that ran, with the
+  node's digest, the ringmaster job, the verdict and the edge. The result
+  record is unchanged.
+- The commit node gets `ISSUES_RUN_KEY` and `ISSUES_GRAPH_DIGEST` in its
+  environment, for the provenance footer circus#314 asks the commit script to
+  write. The commit script is circus's; the variable names are roustabout's
+  choice and circus has to read them.
+- Not done: the shadow run against the glue on krone; the footer in the
+  commit script; deployment; the graph node (a graph calling a graph);
+  per-node narrowing, signing and grants (blocked on moxy FDR 0013 and
+  spinclass FDR 0032).
 
 **Open questions** (FDR-0043, verbatim, minus "language and framework": this
 scaffold settles that one as Go on purse-first's go-mcp):

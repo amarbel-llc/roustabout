@@ -608,8 +608,14 @@ func (e *execution) commit(ctx context.Context) (rr.Ending, bool) {
 	}
 	res := e.r.Ports.Scripts.RunScript(ctx, ScriptSpec{
 		NodeID: g.CommitID, Label: "commit", Program: g.Commit().Program,
-		Args:  []string{frozen, tokenFile},
-		Env:   []string{"ISSUES_MOXIN=" + cfg.IssuesMoxin, "ISSUES_LABELS=" + string(mustJSON(e.req.Labels()))},
+		Args: []string{frozen, tokenFile},
+		// The run key and the graph digest are the provenance footer's
+		// content (circus#314): the committing tool writes it, after the
+		// judge, so a draft cannot forge it. Neither is a secret.
+		Env: []string{
+			"ISSUES_MOXIN=" + cfg.IssuesMoxin, "ISSUES_LABELS=" + string(mustJSON(e.req.Labels())),
+			"ISSUES_RUN_KEY=" + e.runKey, "ISSUES_GRAPH_DIGEST=" + g.Digest,
+		},
 		Limit: cfg.CommitTimeout,
 	})
 	_ = os.Remove(tokenFile)

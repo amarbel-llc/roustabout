@@ -279,6 +279,9 @@ func TestHappyPath(t *testing.T) {
 		t.Fatal("token file should be removed after the commit")
 	}
 	eq(t, "labels", h.commitSpec.Env[1], "ISSUES_LABELS=[]")
+	// circus#314: the commit node gets what its provenance footer says.
+	eq(t, "run key for the footer", h.commitSpec.Env[2], "ISSUES_RUN_KEY="+s.RunKey)
+	eq(t, "graph digest for the footer", h.commitSpec.Env[3], "ISSUES_GRAPH_DIGEST="+g.Digest)
 
 	// The brief names the listing and the traffic file; the mirror says so.
 	for _, want := range []string{
