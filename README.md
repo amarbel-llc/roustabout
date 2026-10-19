@@ -208,6 +208,12 @@ roustabout, not its owner.
   has accepted are in `conformance/known-divergences.tsv`. It needs a circus
   checkout and is not part of `just`. Stand-ins only: no live juggler, madder,
   troupe or ringmaster.
+- `roustabout check [--issues-moxin M] [--commit-program P] [--grammar FILE
+  --grammar-digest D] GRAPH_DIR` loads a graph document exactly as `run` does,
+  against the same host expectations and the pinned grammar, and prints whether
+  it would be run (exit 0) or why not (exit 2). It reads files only: no
+  request, no juggler, no scratch directory. `run` and `check` take the grammar
+  the same way: the host supplies the file and pins it by digest.
 - The summary carries a `ledger`: one entry per node that ran, with the
   node's digest, the ringmaster job, the verdict and the edge. The result
   record is unchanged.
