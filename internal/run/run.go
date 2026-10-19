@@ -234,27 +234,9 @@ func (e *execution) run(ctx context.Context) (any, int) {
 		return s, rr.ExitOK
 	}
 
-	var end rr.Ending
-	filed := false
-	drafted := false
-	if end, drafted = e.draft(ctx); drafted {
-		if sig := e.stopped(ctx); sig != "" {
-			return e.onSignal(sig)
-		}
-		if tend, ok := e.freezeAndStore(ctx); !ok {
-			end = tend
-		} else if jend, ok := e.judge(ctx); !ok {
-			end = jend
-			e.record(g.JudgeID, "judge", graph.KindDecide, "", string(end.Why), graph.EdgeFail)
-		} else if cend, ok := e.commit(ctx); !ok {
-			end = cend
-		} else {
-			filed = true
-		}
-	} else if e.fileExists("traffic.jsonl") {
-		if tend, ok := e.freezeAndStore(ctx); !ok {
-			e.log("%s (the run had already failed: %s)", tend.Reason, end.Why)
-		}
+	end, filed, atSink, sig := e.walk(ctx)
+	if sig != "" {
+		return e.onSignal(sig)
 	}
 	if sig := e.stopped(ctx); sig != "" {
 		return e.onSignal(sig)
@@ -281,7 +263,7 @@ func (e *execution) run(ctx context.Context) (any, int) {
 	e.result = body
 	artifacts := mustJSON(rr.Artifacts(e.issues))
 
-	if !filed {
+	if atSink {
 		e.runSink(ctx)
 	}
 	if sig := e.stopped(ctx); sig != "" {
@@ -421,15 +403,107 @@ func (e *execution) startRun(ctx context.Context) (rr.Ending, bool) {
 	return rr.Ending{}, true
 }
 
-// draft is the draft node: the repo listing fills the brief, then the drafter
-// runs. It is the draft --ok--> judge edge, or the fail edge to the sink.
+// step is how a node ended: the outcome, which names the edge to take; why,
+// when the outcome is fail; and the signal that stopped the run, when one did.
+type step struct {
+	cond   string
+	end    rr.Ending
+	signal string
+}
+
+// walk is the interpreter: from the document's entry, run the node by its kind
+// and take the edge its outcome names, until a node has no edge for its outcome
+// (the walk ended there) or the next node is the sink (the sink needs the
+// result record, which the fixed phase after the walk builds). It returns why
+// the walk ended in a failure, whether it ended by an ok outcome (the run
+// filed), whether the sink is next, and the signal that stopped it, if one did.
+func (e *execution) walk(ctx context.Context) (end rr.Ending, filed, atSink bool, signal string) {
+	g := e.g
+	type key struct{ from, cond string }
+	next := map[key]string{}
+	for _, edge := range g.Edges {
+		next[key{edge.From(), edge.Condition()}] = edge.To()
+	}
+	cur := g.EntryID
+	for range g.Nodes {
+		var s step
+		switch g.Nodes[cur].Kind {
+		case graph.KindAgent:
+			s = e.runAgent(ctx, cur)
+		case graph.KindDecide:
+			s = e.runDecide(ctx, cur)
+		case graph.KindCommit:
+			s = e.runCommit(ctx, cur)
+		}
+		if s.signal != "" {
+			return s.end, false, false, s.signal
+		}
+		to, ok := next[key{cur, s.cond}]
+		if !ok {
+			return s.end, s.cond == graph.EdgeOK, false, ""
+		}
+		if g.Nodes[to].Kind == graph.KindSink {
+			return s.end, false, true, ""
+		}
+		cur = to
+	}
+	return rr.Ending{}, false, false, ""
+}
+
+// runAgent is an agent node: the drafter, and then (the result contract's
+// freeze-store step, decision 18) the frozen and stored traffic file, before
+// anything is judged. A drafter that failed still has its traffic kept, on a
+// best-effort basis.
+func (e *execution) runAgent(ctx context.Context, id string) step {
+	n := e.g.Nodes[id]
+	end, drafted := e.draft(ctx)
+	if drafted {
+		if sig := e.stopped(ctx); sig != "" {
+			return step{signal: sig}
+		}
+		if tend, ok := e.freezeAndStore(ctx); !ok {
+			end, drafted = tend, false
+		}
+	} else if e.fileExists("traffic.jsonl") {
+		if tend, ok := e.freezeAndStore(ctx); !ok {
+			e.log("%s (the run had already failed: %s)", tend.Reason, end.Why)
+		}
+	}
+	if !drafted {
+		e.record(id, n.Label, n.Kind, "", string(end.Why), graph.EdgeFail)
+		return step{cond: graph.EdgeFail, end: end}
+	}
+	e.record(id, n.Label, n.Kind, "", "succeeded", graph.EdgeOK)
+	return step{cond: graph.EdgeOK}
+}
+
+func (e *execution) runDecide(ctx context.Context, id string) step {
+	n := e.g.Nodes[id]
+	end, ok := e.judge(ctx)
+	if !ok {
+		e.record(id, n.Label, n.Kind, "", string(end.Why), graph.EdgeFail)
+		return step{cond: graph.EdgeFail, end: end}
+	}
+	e.record(id, n.Label, n.Kind, "", "ok", graph.EdgeOK)
+	return step{cond: graph.EdgeOK}
+}
+
+func (e *execution) runCommit(ctx context.Context, id string) step {
+	n := e.g.Nodes[id]
+	end, job, ok := e.commit(ctx)
+	if !ok {
+		e.record(id, n.Label, n.Kind, job, string(end.Why), graph.EdgeFail)
+		return step{cond: graph.EdgeFail, end: end}
+	}
+	e.record(id, n.Label, n.Kind, job, "filed", graph.EdgeOK)
+	return step{cond: graph.EdgeOK}
+}
+
+// draft is the drafter's work: the repo listing fills the brief, then the
+// drafter runs.
 func (e *execution) draft(ctx context.Context) (rr.Ending, bool) {
 	cfg := e.r.Config
-	g := e.g
-	fail := func(end rr.Ending) (rr.Ending, bool) {
-		e.record(g.DraftID, "draft", graph.KindAgent, "", string(end.Why), graph.EdgeFail)
-		return end, false
-	}
+	fail := func(end rr.Ending) (rr.Ending, bool) { return end, false }
 	if end, ok := e.prepareBrief(ctx); !ok {
 		return fail(end)
 	}
@@ -445,7 +519,6 @@ func (e *execution) draft(ctx context.Context) (rr.Ending, bool) {
 	if !ok {
 		return fail(end)
 	}
-	e.record(g.DraftID, "draft", graph.KindAgent, "", "succeeded", graph.EdgeOK)
 	return rr.Ending{}, true
 }
 
@@ -582,20 +655,16 @@ func (e *execution) judge(ctx context.Context) (rr.Ending, bool) {
 	if len(verdict.Failed) > 0 {
 		return rr.Ending{Why: rr.WhyJudgeRejected, Reason: rr.RejectionReason(verdict.Failed, answers, threshold)}, false
 	}
-	e.record(g.JudgeID, "judge", graph.KindDecide, "", "ok", graph.EdgeOK)
 	return rr.Ending{}, true
 }
 
 // commit is the commit node, run as a ringmaster job on the frozen traffic with
 // a token minted for this run alone, in a 0600 file the script reads; the token
 // is in no argument and no environment.
-func (e *execution) commit(ctx context.Context) (rr.Ending, bool) {
+func (e *execution) commit(ctx context.Context) (rr.Ending, string, bool) {
 	g, cfg := e.g, e.r.Config
 	frozen := e.path("traffic.frozen.jsonl")
-	failedCommit := func(end rr.Ending) (rr.Ending, bool) {
-		e.record(g.CommitID, "commit", graph.KindCommit, "", string(end.Why), graph.EdgeFail)
-		return end, false
-	}
+	failedCommit := func(end rr.Ending) (rr.Ending, string, bool) { return end, "", false }
 	var nowSHA string
 	if data, err := os.ReadFile(frozen); err == nil {
 		sum := sha256.Sum256(data)
@@ -613,7 +682,7 @@ func (e *execution) commit(ctx context.Context) (rr.Ending, bool) {
 		return failedCommit(rr.Ending{Why: rr.WhyCommitFailed, Reason: "the commit token could not be minted"})
 	}
 	res := e.r.Ports.Scripts.RunScript(ctx, ScriptSpec{
-		NodeID: g.CommitID, Label: "commit", Program: g.Commit().Program,
+		NodeID: g.CommitID, Label: g.Commit().Label, Program: g.Commit().Program,
 		Args: []string{frozen, tokenFile},
 		// The run key and the graph digest are the provenance footer's
 		// content (circus#314): the committing tool writes it, after the
@@ -643,11 +712,9 @@ func (e *execution) commit(ctx context.Context) (rr.Ending, bool) {
 		Stderr: res.Stderr, TimeoutLimit: limit(cfg.CommitTimeout),
 	})
 	if !ok {
-		e.record(g.CommitID, "commit", graph.KindCommit, res.JobID, string(end.Why), graph.EdgeFail)
-		return end, false
+		return end, res.JobID, false
 	}
-	e.record(g.CommitID, "commit", graph.KindCommit, res.JobID, "filed", graph.EdgeOK)
-	return rr.Ending{}, true
+	return rr.Ending{}, res.JobID, true
 }
 
 func mintToken() (string, error) {
@@ -672,12 +739,12 @@ func (e *execution) runSink(ctx context.Context) {
 	}
 	e.sinkRan = true
 	res := e.r.Ports.Scripts.RunScript(ctx, ScriptSpec{
-		NodeID: e.g.SinkID, Label: "sink", Program: e.g.Sink().Program,
+		NodeID: e.g.SinkID, Label: e.g.Sink().Label, Program: e.g.Sink().Program,
 		Stdin: append(append([]byte{}, e.result...), '\n'), Limit: e.r.Config.SinkTimeout,
 	})
 	rc := res.ExitCode
 	e.sinkRC = &rc
-	e.record(e.g.SinkID, "sink", graph.KindSink, res.JobID, fmt.Sprintf("exit %d", rc), "")
+	e.record(e.g.SinkID, e.g.Sink().Label, graph.KindSink, res.JobID, fmt.Sprintf("exit %d", rc), "")
 	if rc != 0 {
 		e.log("the sink %s exited %d; the outcome is unchanged", e.g.Sink().Program, rc)
 	}

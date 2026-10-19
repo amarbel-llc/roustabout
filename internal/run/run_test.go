@@ -484,6 +484,10 @@ func TestMadderFailsClosed(t *testing.T) {
 	if !strings.Contains(*s.Reason, "permission denied") {
 		t.Fatalf("reason %q", *s.Reason)
 	}
+	// The ledger names the edge that was taken: the draft node's work was not
+	// kept, so it took its fail edge.
+	g := graphtest.New(t, graphtest.Options{})
+	eq(t, "draft entry", s.Ledger[0], rr.LedgerEntry{Node: g.DraftID, Label: "draft", Kind: "agent", Verdict: "traffic-not-stored", Edge: "fail"})
 }
 
 // scenario h: the repo listing fails, so the drafter is never started.
