@@ -30,12 +30,20 @@ sentences (the host).
 
 ## Where the code stands
 
-The loader (`internal/graph`) accepts exactly the issue-filer topology: four
-nodes labelled draft, judge, commit and sink, and five fixed edges. The
-interpreter (`internal/run`) is that topology written as a function: start,
-draft, freeze, store, judge, commit, sink, wake, resolve, in that order. The
-document does not drive the walk; it is checked against it, and the commit node
-is found by label and position.
+Steps 1 to 3 of decision 22 are merged. The loader (`internal/graph`) has the
+kind table (outcomes, required outcomes and may-write per kind), finds the four
+nodes by kind with labels as display names only, takes the entry from the
+document's optional `entry` field or the one node no edge leads to, checks every
+edge against the source node's outcomes, and refuses unreachable nodes and
+cycles. It still enforces exactly the issue-filer topology on top of that: one
+node of each of agent, decide, commit and sink, and five fixed edges. The
+interpreter (`internal/run`) is a walker: from the entry it runs each node by
+its kind (agent, decide, commit) and takes the edge its outcome names. Not yet
+document-driven: the sink, the exit wake and `resolve` are a fixed phase after
+the walk (step 4 declares them in a `result` section); freeze-and-store is part
+of the agent step; there is no `switch`, `graph` or gate node; and the host
+seam is `graph.Expect`. The interpreter does not yet use the kind table's
+may-write fact.
 
 Already out of the code: the judge's question names are the keys of
 `questions.json`, the modes must cover exactly those keys, and the judge node
