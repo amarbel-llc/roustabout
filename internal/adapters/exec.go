@@ -147,7 +147,7 @@ func tail(stderr string) string {
 	return s
 }
 
-// exists reports whether path is an executable regular file.
+// executable reports whether path is an executable regular file.
 func executable(path string) bool {
 	st, err := os.Stat(path)
 	return err == nil && st.Mode().IsRegular() && st.Mode().Perm()&0o111 != 0
