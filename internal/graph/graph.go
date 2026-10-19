@@ -106,11 +106,14 @@ type Runtime struct {
 }
 
 type document struct {
-	Schema  int             `json:"schema"`
-	Review  string          `json:"review"`
-	Runtime *Runtime        `json:"runtime,omitempty"`
-	Nodes   map[string]Node `json:"nodes"`
-	Edges   []Edge          `json:"edges"`
+	Schema  int      `json:"schema"`
+	Review  string   `json:"review"`
+	Runtime *Runtime `json:"runtime,omitempty"`
+	// Entry names the node the walk starts at. Without it the entry is the one
+	// node no edge leads to.
+	Entry string          `json:"entry,omitempty"`
+	Nodes map[string]Node `json:"nodes"`
+	Edges []Edge          `json:"edges"`
 }
 
 // Graph is a validated issue-filer graph document.
@@ -125,7 +128,10 @@ type Graph struct {
 	Nodes map[string]Node
 	Edges []Edge
 
-	// The four nodes, found by label.
+	// EntryID is the node the walk starts at.
+	EntryID string
+
+	// The four nodes, found by kind.
 	DraftID, JudgeID, CommitID, SinkID string
 
 	// QuestionsJSON and BriefTOML are the files the graph names by digest.
@@ -205,7 +211,7 @@ func Load(root fs.FS, expect Expect) (*Graph, error) {
 		return nil, refuse("runtime must name the juggler, moxy and glue store paths")
 	}
 	g := &Graph{Digest: declared, Review: doc.Review, Runtime: doc.Runtime, Nodes: doc.Nodes, Edges: doc.Edges}
-	if err := g.validateShape(expect); err != nil {
+	if err := g.validateShape(expect, doc.Entry); err != nil {
 		return nil, err
 	}
 	if err := g.verifyNodeFiles(root); err != nil {
@@ -244,29 +250,24 @@ func refuse(format string, args ...any) error {
 	return fmt.Errorf("graph document is not the shape roustabout runs: "+format, args...)
 }
 
-func (g *Graph) validateShape(expect Expect) error {
+func (g *Graph) validateShape(expect Expect, entry string) error {
 	if len(g.Nodes) != 4 {
 		return refuse("want 4 nodes, got %d", len(g.Nodes))
 	}
-	wantKinds := map[string]string{"draft": KindAgent, "judge": KindDecide, "commit": KindCommit, "sink": KindSink}
-	ids := map[string]string{}
+	// The nodes are found by kind; a label is a display name only.
+	byKind := map[string][]string{}
 	for id, n := range g.Nodes {
 		if !digestPattern.MatchString(id) {
 			return refuse("node id %q is not sha256:<64 hex>", id)
 		}
-		kind, ok := wantKinds[n.Label]
-		if !ok {
-			return refuse("node %s has unexpected label %q", id, n.Label)
-		}
-		if _, dup := ids[n.Label]; dup {
-			return refuse("two nodes labelled %q", n.Label)
-		}
-		if n.Kind != kind {
-			return refuse("node %q is kind %q, want %q", n.Label, n.Kind, kind)
-		}
-		ids[n.Label] = id
+		byKind[n.Kind] = append(byKind[n.Kind], id)
 	}
-	g.DraftID, g.JudgeID, g.CommitID, g.SinkID = ids["draft"], ids["judge"], ids["commit"], ids["sink"]
+	for _, kind := range []string{KindAgent, KindDecide, KindCommit, KindSink} {
+		if len(byKind[kind]) != 1 {
+			return refuse("want exactly one node of kind %q, got %d", kind, len(byKind[kind]))
+		}
+	}
+	g.DraftID, g.JudgeID, g.CommitID, g.SinkID = byKind[KindAgent][0], byKind[KindDecide][0], byKind[KindCommit][0], byKind[KindSink][0]
 
 	draft, judge, commit, sink := g.Draft(), g.Judge(), g.Commit(), g.Sink()
 	if !digestPattern.MatchString(draft.Brief) || draft.Moxin == "" {
@@ -293,6 +294,12 @@ func (g *Graph) validateShape(expect Expect) error {
 
 	if err := g.checkEdges(); err != nil {
 		return err
+	}
+	if err := g.checkWalk(entry); err != nil {
+		return err
+	}
+	if g.EntryID != g.DraftID {
+		return refuse("the entry is %q, not the draft node", g.Nodes[g.EntryID].Label)
 	}
 	want := []Edge{
 		{g.DraftID, EdgeOK, g.JudgeID},
@@ -339,6 +346,86 @@ func (g *Graph) checkEdges() error {
 				return refuse("edges: the %s node %q has no edge for %q", n.Kind, n.Label, cond)
 			}
 		}
+	}
+	return nil
+}
+
+// checkWalk is the part of the structure rules that names no topology: the
+// walk starts at one entry (the document's `entry`, else the one node no edge
+// leads to), every node is reachable from it, and the graph has no cycle (until
+// a bound on one is part of the document).
+func (g *Graph) checkWalk(entry string) error {
+	inbound := map[string]bool{}
+	next := map[string][]string{}
+	for _, e := range g.Edges {
+		inbound[e.To()] = true
+		next[e.From()] = append(next[e.From()], e.To())
+	}
+	if entry != "" {
+		if _, ok := g.Nodes[entry]; !ok {
+			return refuse("the entry %q is not a node of the document", entry)
+		}
+		g.EntryID = entry
+	} else {
+		var starts []string
+		for id := range g.Nodes {
+			if !inbound[id] {
+				starts = append(starts, id)
+			}
+		}
+		sort.Strings(starts)
+		switch len(starts) {
+		case 0:
+			return refuse("no entry: every node has an edge leading to it, so the document has a cycle or needs an explicit entry")
+		case 1:
+			g.EntryID = starts[0]
+		default:
+			return refuse("%d nodes have no edge leading to them and the document names no entry", len(starts))
+		}
+	}
+
+	reached := map[string]bool{}
+	var visit func(id string)
+	visit = func(id string) {
+		if reached[id] {
+			return
+		}
+		reached[id] = true
+		for _, to := range next[id] {
+			visit(to)
+		}
+	}
+	visit(g.EntryID)
+	for id, n := range g.Nodes {
+		if !reached[id] {
+			return refuse("the %s node %q cannot be reached from the entry", n.Kind, n.Label)
+		}
+	}
+
+	const (
+		onPath = 1
+		done   = 2
+	)
+	state := map[string]int{}
+	var cyclic func(id string) bool
+	cyclic = func(id string) bool {
+		switch state[id] {
+		case onPath:
+			return true
+		case done:
+			return false
+		}
+		state[id] = onPath
+		for _, to := range next[id] {
+			if cyclic(to) {
+				return true
+			}
+		}
+		state[id] = done
+		return false
+	}
+	if cyclic(g.EntryID) {
+		return refuse("the document has a cycle; a cycle is refused until a bound on it is part of the document")
 	}
 	return nil
 }

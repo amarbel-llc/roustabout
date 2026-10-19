@@ -23,6 +23,7 @@ type fixture struct {
 	review    string
 	badDigest bool
 	runtime   any
+	entry     string // a label; empty leaves the entry to the edges
 }
 
 func newFixture() *fixture {
@@ -68,6 +69,9 @@ func (f *fixture) fs(t *testing.T) fstest.MapFS {
 	if f.runtime != nil {
 		doc["runtime"] = f.runtime
 	}
+	if f.entry != "" {
+		doc["entry"] = ids[f.entry]
+	}
 	raw, err := json.Marshal(doc)
 	if err != nil {
 		t.Fatal(err)
@@ -105,6 +109,27 @@ func TestLoadValid(t *testing.T) {
 	}
 	if g.Draft().Label != "draft" || g.Commit().Program != testCommit {
 		t.Fatal("nodes not found by label")
+	}
+}
+
+// The nodes are found by kind and the walk starts at the document's entry: a
+// label is a display name only, and an explicit entry is honoured.
+func TestLabelsAreDisplayNamesAndTheEntryIsTheDocuments(t *testing.T) {
+	f := newFixture()
+	f.entry = "draft"
+	byLabel := map[string]string{"draft": "intake", "judge": "gatekeeper", "commit": "file-it", "sink": "bin"}
+	for old, name := range byLabel {
+		f.nodes[old]["label"] = name
+	}
+	g, err := Load(f.fs(t), Expect{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if g.Draft().Label != "intake" || g.Judge().Label != "gatekeeper" || g.Commit().Label != "file-it" || g.Sink().Label != "bin" {
+		t.Fatal("nodes not found by kind")
+	}
+	if g.EntryID != g.DraftID {
+		t.Fatalf("entry %s, draft %s", g.EntryID, g.DraftID)
 	}
 }
 
@@ -227,6 +252,12 @@ func TestLoadRefusals(t *testing.T) {
 		{"wrong kind", func(f *fixture) { f.nodes["judge"]["kind"] = "agent" }, Expect{}, "kind"},
 		{"extra node field", func(f *fixture) { f.nodes["sink"]["extra"] = 1 }, Expect{}, "unknown field"},
 		{"missing edge", func(f *fixture) { f.edges = f.edges[:4] }, Expect{}, "edges"},
+		{"a cycle", func(f *fixture) {
+			f.edges = append(f.edges, [3]string{"commit", "ok", "draft"})
+			f.entry = "draft"
+		}, Expect{}, "cycle"},
+		{"no entry because of a cycle", func(f *fixture) { f.edges = append(f.edges, [3]string{"commit", "ok", "draft"}) }, Expect{}, "no entry"},
+		{"a node the entry does not reach", func(f *fixture) { f.entry = "judge" }, Expect{}, "cannot be reached"},
 		{"extra edge", func(f *fixture) { f.edges = append(f.edges, [3]string{"commit", "ok", "sink"}) }, Expect{}, "edges"},
 		{"an edge out of the sink", func(f *fixture) { f.edges = append(f.edges, [3]string{"sink", "fail", "commit"}) }, Expect{}, "not one of its outcomes"},
 		{"two edges for one outcome", func(f *fixture) { f.edges = append(f.edges, [3]string{"draft", "ok", "commit"}) }, Expect{}, "two edges"},
