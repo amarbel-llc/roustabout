@@ -203,6 +203,12 @@ func (g *Graph) HasSinkProgram() bool { return g.Sink().Program != NoSinkProgram
 type Expect struct {
 	Moxin         string
 	CommitProgram string
+	// Grammar is the grammar document the host supplies, and GrammarDigest the
+	// digest the host pins it by (FDR-0043 decision 21): the graph document
+	// never carries the grammar that validates it. Both or neither; with
+	// neither, no grammar is checked.
+	Grammar       []byte
+	GrammarDigest string
 }
 
 // Digest returns "sha256:<hex>" of b.
@@ -277,7 +283,26 @@ func Load(root fs.FS, expect Expect) (*Graph, error) {
 	if got := Digest(g.BriefTOML); got != g.Draft().Brief {
 		return nil, refuse("drafter.brief.toml %s is not the draft node's brief %s", got, g.Draft().Brief)
 	}
+	if err := checkGrammar(g, expect); err != nil {
+		return nil, err
+	}
 	return g, nil
+}
+
+// checkGrammar checks the sentence against the host's pinned grammar, if the
+// host supplied one.
+func checkGrammar(g *Graph, expect Expect) error {
+	if expect.Grammar == nil && expect.GrammarDigest == "" {
+		return nil
+	}
+	if got := Digest(expect.Grammar); expect.GrammarDigest == "" || got != expect.GrammarDigest {
+		return fmt.Errorf("the grammar document %s is not the one the host pinned (%q)", got, expect.GrammarDigest)
+	}
+	gr, err := ParseGrammar(expect.Grammar)
+	if err != nil {
+		return err
+	}
+	return gr.Check(g)
 }
 
 func refuse(format string, args ...any) error {
@@ -418,18 +443,22 @@ func (g *Graph) checkResult(declared []ResultStep) error {
 		}
 		return nil
 	}
-	if len(declared) != 3 {
-		return refuse("result: want the steps %s, %s, %s in that order, got %d steps", StepFreezeStore, StepWake, StepResolve, len(declared))
+	// freeze-store, then wake (which a grammar may mark optional), then resolve.
+	var names []string
+	for _, s := range declared {
+		names = append(names, s.Step)
 	}
-	fs, wake, resolve := declared[0], declared[1], declared[2]
-	if fs.Step != StepFreezeStore || wake.Step != StepWake || resolve.Step != StepResolve {
-		return refuse("result: want the steps %s, %s, %s in that order, got %q, %q, %q", StepFreezeStore, StepWake, StepResolve, fs.Step, wake.Step, resolve.Step)
+	if !slices.Equal(names, []string{StepFreezeStore, StepWake, StepResolve}) && !slices.Equal(names, []string{StepFreezeStore, StepResolve}) {
+		return refuse("result: want the steps %s, %s, %s in that order (%s may be left out), got %v", StepFreezeStore, StepWake, StepResolve, StepWake, names)
 	}
+	fs, resolve := declared[0], declared[len(declared)-1]
 	if n, ok := g.Nodes[fs.Node]; !ok || n.Kind != KindAgent {
 		return refuse("result: %s must name an agent node of the document, got %q", StepFreezeStore, fs.Node)
 	}
-	if fs.Builder != "" || wake.Node != "" || wake.Builder != "" || resolve.Node != "" {
-		return refuse("result: a step carries only the fields its kind of step takes")
+	for _, s := range declared {
+		if (s.Step != StepFreezeStore && s.Node != "") || (s.Step != StepResolve && s.Builder != "") {
+			return refuse("result: a step carries only the fields its kind of step takes")
+		}
 	}
 	if resolve.Builder != BuilderIssueFiler1 {
 		return refuse("result: %s names the record builder %q, which roustabout does not ship (it ships %s)", StepResolve, resolve.Builder, BuilderIssueFiler1)

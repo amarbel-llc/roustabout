@@ -29,6 +29,7 @@ type runOptions struct {
 	roomDomain, operatorJID, issuer                  string
 	wakeUser, wakePassFile, judgeModel               string
 	noUserManager                                    bool
+	grammar, grammarDigest                           string
 
 	newRun, listRepos, agent, agentBackstop, madderLimit, judge time.Duration
 	commit, sink, resolve, signalResolve, resolveRetryPause     time.Duration
@@ -52,6 +53,8 @@ func parseRunOptions(args []string, stderr io.Writer) (runOptions, error) {
 	fs.StringVar(&o.wakeUser, "wake-user", "", "the account the exit wake is sent from; empty sends none")
 	fs.StringVar(&o.wakePassFile, "wake-pass-file", "", "the wake account's password file")
 	fs.StringVar(&o.judgeModel, "judge-model", "jev", "the model juggler decide asks")
+	fs.StringVar(&o.grammar, "grammar", "", "the grammar document the graph must satisfy (needs --grammar-digest); empty checks none")
+	fs.StringVar(&o.grammarDigest, "grammar-digest", "", "the sha256:<hex> digest the grammar document is pinned by")
 	fs.BoolVar(&o.noUserManager, "no-user-manager", false, "run the drafter without systemd-run --user")
 	fs.DurationVar(&o.newRun, "new-run-timeout", 170*time.Second, "limit on spawn --new-run")
 	fs.DurationVar(&o.listRepos, "list-repos-timeout", 60*time.Second, "limit on the repository listing")
@@ -76,6 +79,9 @@ func parseRunOptions(args []string, stderr io.Writer) (runOptions, error) {
 		if v == "" {
 			return o, fmt.Errorf("%s is required", name)
 		}
+	}
+	if (o.grammar == "") != (o.grammarDigest == "") {
+		return o, fmt.Errorf("--grammar and --grammar-digest go together: the grammar is pinned by its digest")
 	}
 	return o, nil
 }
@@ -148,7 +154,16 @@ func execute(ctx context.Context, e env, args []string) int {
 	}
 
 	runner := &run.Runner{Config: o.config(e.lookup), Log: e.stderr, Ports: e.ports(o, e.environ, e.stderr)}
-	runner.Graph, runner.GraphErr = graph.Load(os.DirFS(o.graphDir), graph.Expect{Moxin: o.issuesMoxin, CommitProgram: o.commitProgram})
+	expect := graph.Expect{Moxin: o.issuesMoxin, CommitProgram: o.commitProgram}
+	if o.grammar != "" {
+		if expect.Grammar, err = os.ReadFile(o.grammar); err != nil {
+			runner.GraphErr = fmt.Errorf("the grammar document could not be read: %v", err)
+		}
+		expect.GrammarDigest = o.grammarDigest
+	}
+	if runner.GraphErr == nil {
+		runner.Graph, runner.GraphErr = graph.Load(os.DirFS(o.graphDir), expect)
+	}
 
 	ctx, cancel := context.WithCancelCause(ctx)
 	defer cancel(nil)
