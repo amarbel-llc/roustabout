@@ -1,0 +1,8 @@
+# Differences between circus's glue and `roustabout run` that conformance/compare.bash
+# has found and that are accounted for. Columns, tab-separated: scenario (or *), the
+# artifact or summary.json:KEY, why. A line here only silences the report; it says
+# nothing about whether the difference is acceptable to a caller (that is in the
+# conformance report handed to circus).
+*	summary.json:ledger	roustabout adds a per-node ledger (FDR-0043 decision 1) to the summary; the glue has none. Not among the journaled fields.
+m2.bad-graph	summary.json:reason	both refuse with outcome refused, exit 2; the message names the shape each implementation runs. reason is not journaled.
+gt3.no-gate-graph	summary.json:reason	both refuse with outcome refused, exit 2; roustabout's loader finds the node file differs from graph.json (circus's no-gate variant edits graph.json alone) before it reaches the gate check, the glue names the missing gate. reason is not journaled.

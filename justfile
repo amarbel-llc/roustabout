@@ -27,6 +27,25 @@ test-go:
     system=$(nix eval --raw --impure --expr 'builtins.currentSystem')
     nix build ".#checks.${system}.tests" --no-link --print-build-logs
 
+# Builds circus's issue-filer glue against its own stand-ins (circus's
+# infra/hosts/pkgs/issue-filer-glue/test; read-only, nothing in circus is
+# written) and roustabout, runs the glue's scenarios through both and diffs
+# the results (conformance/compare.bash). Not part of `just`: it needs a circus
+# checkout. SCENARIOS select by name prefix, e.g. `just test-conformance "" b c e`.
+#
+# compare roustabout run with circus's glue on the glue's own scenarios
+[group('test')]
+test-conformance hosts=(env('HOME') / "eng/repos/circus/infra/hosts") *scenarios:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    glue=$(cd {{ hosts }} && nix build --no-link --print-out-paths --impure --inputs-from . --expr \
+      'let pkgs = (builtins.getFlake "nixpkgs").legacyPackages.${builtins.currentSystem}; in import ./pkgs/issue-filer-glue/test { inherit pkgs; }')
+    rou=$(nix build --no-link --print-out-paths)/bin/roustabout
+    GLUE_NIX={{ hosts }}/pkgs/issue-filer-glue/default.nix \
+      nix shell --inputs-from . nixpkgs#jq nixpkgs#coreutils nixpkgs#gnused nixpkgs#gnugrep nixpkgs#gawk \
+      nixpkgs#util-linux nixpkgs#diffutils nixpkgs#findutils -c \
+      bash conformance/compare.bash "$glue" "$rou" {{ scenarios }}
+
 # --- lint ---
 
 lint: lint-fmt

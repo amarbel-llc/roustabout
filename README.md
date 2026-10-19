@@ -177,6 +177,15 @@ roustabout, not its owner.
   against the test binary standing in for each program, with flags copied
   from what the circus glue passes (clown 814d90a0). Script nodes (commit,
   sink) run as ringmaster jobs through `ringmaster start` and `done`.
+- `just test-conformance` runs circus's glue and `roustabout run` on the
+  same scenarios and the same stand-ins (circus's `test/fake-*.bash`, built
+  by circus, read in place and never copied) and diffs the exit status, the
+  summary, and everything the stand-ins logged (`conformance/compare.bash`).
+  It reads every setting roustabout is given from the glue script, and checks
+  roustabout's flag defaults against the glue's `default.nix`. Differences it
+  has accepted are in `conformance/known-divergences.tsv`. It needs a circus
+  checkout and is not part of `just`. Stand-ins only: no live juggler, madder,
+  troupe or ringmaster.
 - The summary carries a `ledger`: one entry per node that ran, with the
   node's digest, the ringmaster job, the verdict and the edge. The result
   record is unchanged.
