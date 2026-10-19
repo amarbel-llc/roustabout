@@ -175,7 +175,7 @@ func execute(ctx context.Context, e env, args []string) int {
 	}
 
 	summary, code := runner.Run(ctx, input)
-	b, err := json.Marshal(summary)
+	b, err := rr.Marshal(summary)
 	if err != nil {
 		fmt.Fprintln(e.stderr, "roustabout run: the summary could not be built:", err)
 		return 1

@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -55,6 +57,14 @@ func helper() {
 		line, _ := json.Marshal(c)
 		f.Write(append(line, '\n'))
 		f.Close()
+	}
+	if pidFile := os.Getenv("HELPER_GRANDCHILD"); pidFile != "" {
+		// A process of its own that outlives this one unless it is stopped.
+		gc := exec.Command(os.Args[0])
+		gc.Env = []string{"ROUSTABOUT_HELPER=1", "HELPER_SLEEP=30s"}
+		if err := gc.Start(); err == nil {
+			os.WriteFile(pidFile, []byte(strconv.Itoa(gc.Process.Pid)), 0o600)
+		}
 	}
 	if s := os.Getenv("HELPER_SLEEP"); s != "" {
 		d, _ := time.ParseDuration(s)
@@ -128,6 +138,44 @@ func TestExecTimeoutIsExit124(t *testing.T) {
 	if time.Since(start) > 3*time.Second {
 		t.Fatal("the limit did not stop the child")
 	}
+}
+
+// timeout(1), which the glue puts on every call, stops the command's whole
+// process group; a limit here has to leave no descendant running either.
+func TestExecTimeoutStopsTheChildsDescendantsToo(t *testing.T) {
+	pidFile := filepath.Join(t.TempDir(), "grandchild.pid")
+	x, _ := newExec(t, "HELPER_SLEEP=30s", "HELPER_GRANDCHILD="+pidFile)
+	out := x.Run(context.Background(), 500*time.Millisecond, nil, nil, os.Args[0])
+	if out.RC != 124 {
+		t.Fatalf("%+v", out)
+	}
+	raw, err := os.ReadFile(pidFile)
+	if err != nil {
+		t.Fatalf("the helper did not start a descendant: %v", err)
+	}
+	pid, err := strconv.Atoi(string(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	for alive(pid) {
+		if time.Now().After(deadline) {
+			t.Fatalf("descendant %d is still running after the limit stopped its parent", pid)
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+}
+
+// alive is whether pid is a running process (a zombie is not).
+func alive(pid int) bool {
+	stat, err := os.ReadFile("/proc/" + strconv.Itoa(pid) + "/stat")
+	if err != nil {
+		return false
+	}
+	// pid (comm) S ...: the state follows the last ')'.
+	s := string(stat)
+	i := strings.LastIndex(s, ")")
+	return i >= 0 && i+2 < len(s) && s[i+2] != 'Z'
 }
 
 func TestExecReportsExitStatusAndAStderrTail(t *testing.T) {

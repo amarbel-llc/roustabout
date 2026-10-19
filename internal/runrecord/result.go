@@ -6,6 +6,7 @@
 package runrecord
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -14,6 +15,20 @@ import (
 
 	"code.linenisgreat.com/roustabout/internal/graph"
 )
+
+// Marshal is json.Marshal without HTML escaping. The glue builds its JSON with
+// jq, which writes <, > and & as themselves; encoding/json writes them as
+// < and so on, which reads back the same but is longer, and the exit
+// wake's body is bounded in bytes.
+func Marshal(v any) ([]byte, error) {
+	var b bytes.Buffer
+	enc := json.NewEncoder(&b)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(v); err != nil {
+		return nil, err
+	}
+	return bytes.TrimSuffix(b.Bytes(), []byte("\n")), nil
+}
 
 // State is CONTRACT.md's vocabulary.
 type State string

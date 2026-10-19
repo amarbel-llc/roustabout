@@ -9,6 +9,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	rr "code.linenisgreat.com/roustabout/internal/runrecord"
 )
 
 // The traffic file is the issues moxin's record of the run: one JSON object
@@ -286,7 +288,7 @@ func WakeBody(runKey, requestID string, record json.RawMessage, review *Review) 
 	if review != nil {
 		doc["review"] = review
 	}
-	b, err := json.Marshal(doc)
+	b, err := rr.Marshal(doc)
 	if err != nil {
 		return nil, err
 	}
@@ -296,14 +298,14 @@ func WakeBody(runKey, requestID string, record json.RawMessage, review *Review) 
 			review.Drafts[i].BodyDropped = true
 		}
 		review.BodiesDropped = true
-		if b, err = json.Marshal(doc); err != nil {
+		if b, err = rr.Marshal(doc); err != nil {
 			return nil, err
 		}
 	}
 	if len(b) > wakeBodyMax && review != nil {
 		review.Drafts = []ReviewDraft{}
 		review.DraftsDropped = true
-		if b, err = json.Marshal(doc); err != nil {
+		if b, err = rr.Marshal(doc); err != nil {
 			return nil, err
 		}
 	}

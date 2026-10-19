@@ -206,6 +206,12 @@ func (e *execution) run(ctx context.Context) (any, int) {
 	threshold := g.Threshold()
 
 	if end, ok := e.startRun(ctx); !ok {
+		// A signal that stopped juggler spawn --new-run is an interruption, not a
+		// run that could not be started: the exit status (143, not 1) is what
+		// tells the caller to keep the request and try again.
+		if sig := e.stopped(ctx); sig != "" {
+			return e.onSignal(sig)
+		}
 		e.log("%s", end.Reason)
 		s := e.baseSummary(rr.OutcomeNotStarted)
 		why := end.Why
@@ -267,7 +273,7 @@ func (e *execution) run(ctx context.Context) (any, int) {
 		Issues: e.issues, NotFiled: e.notFiled, FailedChecks: e.failed, ShadowFailedChecks: e.shadow,
 		TrafficBlob: e.trafficBlob, Reason: e.ending.Reason,
 	}
-	body, err := json.Marshal(rec)
+	body, err := rr.Marshal(rec)
 	if err != nil {
 		e.log("the result record could not be built: %v", err)
 		body = []byte(`{"state":"failed"}`)
@@ -371,7 +377,7 @@ func paren(s string) string {
 }
 
 func mustJSON(v any) []byte {
-	b, err := json.Marshal(v)
+	b, err := rr.Marshal(v)
 	if err != nil {
 		return []byte("[]")
 	}

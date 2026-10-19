@@ -829,6 +829,30 @@ func TestWakeBodyDropsBodiesThenDrafts(t *testing.T) {
 	}
 }
 
+// The wake body's bound is in bytes of what the glue's jq would write: <, > and
+// & count as one byte each, not the six of <. Found by reading the glue
+// against the code, not by a scenario (the stand-ins make one small draft).
+func TestWakeBodyBoundCountsHTMLCharactersAsOneByte(t *testing.T) {
+	var drafts []map[string]json.RawMessage
+	for range 7 {
+		drafts = append(drafts, map[string]json.RawMessage{
+			"repo": rawJSON("a/b"), "title": rawJSON("t"), "repo_listing": rawJSON("a/b"), "body": rawJSON(strings.Repeat("<", 4000)),
+		})
+	}
+	rv := BuildReview(JevState{Drafts: drafts}, json.RawMessage(`{}`), 0.5)
+	b, err := WakeBody("k", "", json.RawMessage(`{"state":"filed"}`), &rv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rv.BodiesDropped {
+		t.Fatalf("28000 bytes of drafts fit in 32 KiB; the bodies were dropped: %d bytes", len(b))
+	}
+	escaped := string([]byte{'\\', 'u', '0', '0', '3', 'c'})
+	if i := strings.Index(string(b), escaped); i >= 0 {
+		t.Fatalf("html characters were escaped at byte %d of %d: ...%s...", i, len(b), b[max(0, i-60):min(len(b), i+60)])
+	}
+}
+
 // scenarios o1 and o2: origin picks the labels the commit gets.
 func TestOriginLabels(t *testing.T) {
 	h := newHarness(t)
@@ -966,6 +990,26 @@ func TestSignalOnAnExistingRunResolvesNothing(t *testing.T) {
 	sum, exit := r.Run(ctx, input(plainText))
 	eq(t, "exit", exit, 130)
 	s := sum.(Interrupted)
+	eq(t, "resolved", s.Resolved, false)
+	eq(t, "calls", h.sequence(), "juggler new-run")
+}
+
+// A signal that kills juggler spawn --new-run is an interruption (143, the
+// caller keeps the request), not a run that could not be started (1, the caller
+// drops it). Found by conformance/compare.bash against the glue.
+func TestSignalDuringTheNewRunIsAnInterruption(t *testing.T) {
+	h := newHarness(t)
+	h.newRun.ExitCode = 143
+	ctx, cancel := context.WithCancelCause(context.Background())
+	cancel(SignalCause("TERM"))
+	r, _ := h.runner(graphtest.New(t, graphtest.Options{}))
+	sum, exit := r.Run(ctx, input(plainText))
+	eq(t, "exit", exit, 143)
+	s, ok := sum.(Interrupted)
+	if !ok {
+		t.Fatalf("summary %#v", sum)
+	}
+	eq(t, "outcome", s.Outcome, rr.OutcomeInterrupted)
 	eq(t, "resolved", s.Resolved, false)
 	eq(t, "calls", h.sequence(), "juggler new-run")
 }

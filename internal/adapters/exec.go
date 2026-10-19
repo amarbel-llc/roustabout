@@ -90,11 +90,21 @@ func (x *Exec) Run(ctx context.Context, limit time.Duration, env []string, stdin
 	cmd.Stdin = bytes.NewReader(stdin)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-	cmd.Cancel = func() error { return cmd.Process.Signal(syscall.SIGTERM) }
-	cmd.WaitDelay = x.KillAfter
-	if cmd.WaitDelay == 0 {
-		cmd.WaitDelay = 10 * time.Second
+	killAfter := x.KillAfter
+	if killAfter == 0 {
+		killAfter = 10 * time.Second
 	}
+	// The child leads a process group of its own, and the limit stops the whole
+	// group, like timeout(1) does for the glue: TERM, then KILL after killAfter.
+	// A child that forks (a commit script that runs a forge client) leaves
+	// nothing running after its limit.
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.Cancel = func() error {
+		pgid := cmd.Process.Pid
+		time.AfterFunc(killAfter, func() { _ = syscall.Kill(-pgid, syscall.SIGKILL) })
+		return syscall.Kill(-pgid, syscall.SIGTERM)
+	}
+	cmd.WaitDelay = killAfter
 	err := cmd.Run()
 	if x.Stderr != nil {
 		_, _ = x.Stderr.Write(stderr.Bytes())
