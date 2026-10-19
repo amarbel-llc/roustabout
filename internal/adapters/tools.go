@@ -3,12 +3,15 @@ package adapters
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"code.linenisgreat.com/roustabout/internal/run"
@@ -141,6 +144,32 @@ type Scripts struct {
 	// Source labels the emitting plugin in every record of the job.
 	Source string
 	Log    func(format string, args ...any)
+
+	keyOnce sync.Once
+	keyEnv  []string
+}
+
+// sessionEnv pins one ringmaster session key for every call this run makes.
+// ringmaster derives a job's journal directory from the session key and, when
+// neither CLOWN_SESSION_ID nor CLAUDE_SESSION_ID is set, generates a fresh
+// UUIDv4 per invocation (ringmaster(1) SESSION KEY): `start` and `done` would
+// then land in different channels and `done` could not find the journal.
+// `done` has no --target, so the key has to come from the environment.
+func (s *Scripts) sessionEnv() []string {
+	s.keyOnce.Do(func() {
+		for _, kv := range s.X.Base {
+			name, v, _ := strings.Cut(kv, "=")
+			if (name == "CLOWN_SESSION_ID" || name == "CLAUDE_SESSION_ID") && v != "" {
+				return
+			}
+		}
+		var b [16]byte
+		_, _ = rand.Read(b[:])
+		b[6] = b[6]&0x0f | 0x40
+		b[8] = b[8]&0x3f | 0x80
+		s.keyEnv = []string{fmt.Sprintf("CLOWN_SESSION_ID=%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])}
+	})
+	return s.keyEnv
 }
 
 func (s *Scripts) logf(format string, args ...any) {
@@ -152,7 +181,7 @@ func (s *Scripts) logf(format string, args ...any) {
 func (s *Scripts) RunScript(ctx context.Context, spec run.ScriptSpec) run.ScriptResult {
 	var jobID string
 	if s.Ringmaster != "" {
-		start := s.X.Run(ctx, 30*time.Second, nil, nil, s.Ringmaster, "start", "--label", spec.Label, "--source", s.Source)
+		start := s.X.Run(ctx, 30*time.Second, s.sessionEnv(), nil, s.Ringmaster, "start", "--label", spec.Label, "--source", s.Source)
 		if start.RC == 0 {
 			jobID = strings.TrimSpace(string(start.Stdout))
 		} else {
@@ -166,7 +195,7 @@ func (s *Scripts) RunScript(ctx context.Context, spec run.ScriptSpec) run.Script
 			state, message = "failed", spec.Label+" exited "+strconv.Itoa(out.RC)
 		}
 		// A ctx stopped by a signal must still get its end recorded.
-		done := s.X.Run(context.WithoutCancel(ctx), 30*time.Second, nil, nil, s.Ringmaster, "done", jobID, "--state", state, "--message", message)
+		done := s.X.Run(context.WithoutCancel(ctx), 30*time.Second, s.sessionEnv(), nil, s.Ringmaster, "done", jobID, "--state", state, "--message", message)
 		if done.RC != 0 {
 			s.logf("ringmaster done %s exited %d%s", jobID, done.RC, paren(done.Stderr))
 		}

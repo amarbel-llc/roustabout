@@ -375,6 +375,12 @@ func TestScriptsRunAsRingmasterJobs(t *testing.T) {
 	if strings.Join(cs[2].Args, " ") != "done job-commit-1 --state succeeded --message commit exited 0" {
 		t.Fatalf("done %v", cs[2].Args)
 	}
+	// start and done share one session key, or done cannot find the journal
+	// (ringmaster derives its directory from the key and, absent one, makes a
+	// new UUID per invocation).
+	if key := cs[0].Env["CLOWN_SESSION_ID"]; key == "" || key != cs[2].Env["CLOWN_SESSION_ID"] {
+		t.Fatalf("session keys: start %q, done %q", key, cs[2].Env["CLOWN_SESSION_ID"])
+	}
 }
 
 func TestScriptsRecordAFailureAndPassStdin(t *testing.T) {
