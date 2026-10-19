@@ -42,8 +42,9 @@ its kind (agent, decide, commit) and takes the edge its outcome names. Not yet
 document-driven: the sink, the exit wake and `resolve` are a fixed phase after
 the walk (step 4 declares them in a `result` section); freeze-and-store is part
 of the agent step; there is no `switch`, `graph` or gate node; and the host
-seam is `graph.Expect`. The interpreter does not yet use the kind table's
-may-write fact.
+seam is `graph.Expect`. The interpreter uses the kind table's may-write fact:
+the commit's one-run token is minted only for a node whose kind may hold a
+write tool, and the sink is handed no token, argument or environment.
 
 Already out of the code: the judge's question names are the keys of
 `questions.json`, the modes must cover exactly those keys, and the judge node
