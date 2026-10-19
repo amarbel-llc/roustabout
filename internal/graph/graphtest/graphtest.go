@@ -108,6 +108,9 @@ func Files(t testing.TB, o Options) fstest.MapFS {
 	e := func(a, c, b string) [3]string { return [3]string{ids[a], c, ids[b]} }
 	raw, err := json.Marshal(map[string]any{
 		"schema": 1, "review": "all-or-nothing", "nodes": byID,
+		"result": []map[string]string{
+			{"step": "freeze-store", "node": ids["draft"]}, {"step": "wake"}, {"step": "resolve", "builder": "issue-filer/1"},
+		},
 		"edges": [][3]string{e("draft", "ok", "judge"), e("judge", "ok", "commit"), e("draft", "fail", "sink"), e("judge", "fail", "sink"), e("commit", "fail", "sink")},
 	})
 	if err != nil {

@@ -107,10 +107,10 @@ refuses any other step, any other order, a `freeze-store` node that is not an
 agent node, a field a step does not take, and a builder roustabout does not
 ship. The interpreter keeps the declared agent node's traffic file (freeze, then
 store, before anything is judged) and sends the declared wake. A document with
-no `result` section reads as that list for the draft node; this is transitional
-and will be refused once circus's builder writes the section. `wake` is
-declared in the document, but whether one is sent stays request-driven (no
-`notify`, no wake).
+no `result` section is refused (step 4c; circus's builder writes the section
+and krone runs it). `wake` is declared in the document, but whether one is sent
+stays request-driven (no `notify`, no wake); a grammar may mark it optional, and
+then a document may leave it out.
 
 `issue-filer/1` is the record builder `resolve` uses: CONTRACT.md's result
 record, `state` one of `filed`, `rejected` or `failed`, and `why` naming the

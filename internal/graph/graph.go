@@ -157,9 +157,8 @@ type Graph struct {
 	// EntryID is the node the walk starts at.
 	EntryID string
 
-	// Result is the declared result contract. A document without a `result`
-	// section reads as today's issue-filer list (transitional: absent will be
-	// refused once circus's builder writes the section).
+	// Result is the declared result contract; a document without a `result`
+	// section is refused.
 	Result []ResultStep
 
 	// The four nodes, found by kind.
@@ -433,15 +432,10 @@ func (g *Graph) FreezesStoresTrafficOf(id string) bool {
 // checkResult validates the declared result contract against the closed
 // vocabulary: freeze-store of an agent node's traffic, then wake, then resolve
 // with a record builder roustabout ships, in that order and nothing else. A
-// document that declares nothing reads as that list for the draft node.
+// document that declares nothing is refused.
 func (g *Graph) checkResult(declared []ResultStep) error {
 	if len(declared) == 0 {
-		g.Result = []ResultStep{
-			{Step: StepFreezeStore, Node: g.DraftID},
-			{Step: StepWake},
-			{Step: StepResolve, Builder: BuilderIssueFiler1},
-		}
-		return nil
+		return refuse("result: the document declares no result section (freeze-store, wake, resolve)")
 	}
 	// freeze-store, then wake (which a grammar may mark optional), then resolve.
 	var names []string

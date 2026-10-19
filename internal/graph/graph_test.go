@@ -55,6 +55,7 @@ func newFixture() *fixture {
 		questions: testQuestions,
 		brief:     testBrief,
 		review:    "all-or-nothing",
+		result:    issueFilerResult(),
 	}
 }
 
@@ -161,26 +162,22 @@ func TestLabelsAreDisplayNamesAndTheEntryIsTheDocuments(t *testing.T) {
 // FDR-0043 decision 18: the result contract is declared in the document; a
 // document that declares nothing reads as the issue-filer's list.
 func TestResultSection(t *testing.T) {
-	absent, err := Load(newFixture().fs(t), Expect{})
+	declared, err := Load(newFixture().fs(t), Expect{})
 	if err != nil {
 		t.Fatal(err)
 	}
+	g := declared
+	if len(g.Result) != 3 || !g.Declares(StepWake) || !g.FreezesStoresTrafficOf(g.DraftID) || g.FreezesStoresTrafficOf(g.JudgeID) {
+		t.Fatalf("%+v", g.Result)
+	}
+	if g.Result[2].Builder != BuilderIssueFiler1 {
+		t.Fatalf("builder %q", g.Result[2].Builder)
+	}
+	// A document that declares no result section is refused (step 4c).
 	f := newFixture()
-	f.result = issueFilerResult()
-	declared, err := Load(f.fs(t), Expect{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	for name, g := range map[string]*Graph{"absent": absent, "declared": declared} {
-		if len(g.Result) != 3 || !g.Declares(StepWake) || !g.FreezesStoresTrafficOf(g.DraftID) || g.FreezesStoresTrafficOf(g.JudgeID) {
-			t.Fatalf("%s: %+v", name, g.Result)
-		}
-		if g.Result[2].Builder != BuilderIssueFiler1 {
-			t.Fatalf("%s: builder %q", name, g.Result[2].Builder)
-		}
-	}
-	if absent.Digest == declared.Digest {
-		t.Fatal("the section is part of the document, so of its digest")
+	f.result = nil
+	if _, err := Load(f.fs(t), Expect{}); err == nil || !strings.Contains(err.Error(), "no result section") {
+		t.Fatalf("want a refusal, got %v", err)
 	}
 }
 
