@@ -508,6 +508,21 @@ type Summary struct {
 	Notified           *bool           `json:"notified"`
 	Why                *Why            `json:"why"`
 	Reason             *string         `json:"reason"`
+	// Ledger is roustabout's run-level ledger (FDR-0043 decision 1): one entry
+	// per node that ran. It is in the summary, not in the result record, so the
+	// record stays what CONTRACT.md defines.
+	Ledger []LedgerEntry `json:"ledger,omitempty"`
+}
+
+// LedgerEntry is one node of a run: the node's digest, the job it was
+// executed as, its verdict, and the edge taken out of it.
+type LedgerEntry struct {
+	Node    string `json:"node"`
+	Label   string `json:"label"`
+	Kind    string `json:"kind"`
+	Job     string `json:"job,omitempty"`
+	Verdict string `json:"verdict"`
+	Edge    string `json:"edge,omitempty"`
 }
 
 // Normalize fills the arrays the summary always carries.
