@@ -4,6 +4,8 @@ package graphtest
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 	"testing/fstest"
 
@@ -27,8 +29,33 @@ type Options struct {
 	NoSink bool
 }
 
-// New builds, writes and loads a graph document.
+// New builds and loads a graph document.
 func New(t testing.TB, o Options) *graph.Graph {
+	t.Helper()
+	g, err := graph.Load(Files(t, o), graph.Expect{Moxin: Moxin, CommitProgram: CommitProgram})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return g
+}
+
+// WriteDir writes the document to dir, as circus issue-filer-graph lays it out.
+func WriteDir(t testing.TB, dir string, o Options) {
+	t.Helper()
+	files := Files(t, o)
+	for name, f := range files {
+		path := filepath.Join(dir, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, f.Data, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// Files builds the document's files.
+func Files(t testing.TB, o Options) fstest.MapFS {
 	t.Helper()
 	threshold := 0.5
 	if o.Threshold != nil {
@@ -72,9 +99,5 @@ func New(t testing.TB, o Options) *graph.Graph {
 	files["graph.digest"] = &fstest.MapFile{Data: []byte(graph.Digest(raw) + "\n")}
 	files["questions.json"] = &fstest.MapFile{Data: []byte(Questions)}
 	files["drafter.brief.toml"] = &fstest.MapFile{Data: []byte(BriefTemplate)}
-	g, err := graph.Load(files, graph.Expect{Moxin: Moxin, CommitProgram: CommitProgram})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return g
+	return files
 }

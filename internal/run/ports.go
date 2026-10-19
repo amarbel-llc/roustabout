@@ -26,6 +26,7 @@ type NewRunRequest struct {
 	RoomDomain  string
 	OperatorJID string
 	Issuer      string
+	Limit       time.Duration
 }
 
 // NewRunResponse is what juggler spawn --new-run returned. ExitCode is the

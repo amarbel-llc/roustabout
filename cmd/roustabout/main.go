@@ -31,6 +31,8 @@ func buildApp() *command.App {
 		},
 	})
 
+	app.AddCommand(runCommand())
+
 	app.AddCommand(&command.Command{
 		Name:            "generate-artifacts",
 		Hidden:          true,

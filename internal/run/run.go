@@ -395,7 +395,7 @@ func (e *execution) startRun(ctx context.Context) (rr.Ending, bool) {
 	}
 	resp := e.r.Ports.Juggler.NewRun(ctx, NewRunRequest{
 		RunKey: e.runKey, InputFile: e.path("request.json"),
-		RoomDomain: cfg.RoomDomain, OperatorJID: cfg.OperatorJID, Issuer: cfg.Issuer,
+		RoomDomain: cfg.RoomDomain, OperatorJID: cfg.OperatorJID, Issuer: cfg.Issuer, Limit: cfg.NewRunTimeout,
 	})
 	if resp.ExitCode != 0 {
 		return rr.Ending{Why: rr.WhyRunNotStarted, Reason: fmt.Sprintf(
@@ -661,7 +661,7 @@ func (e *execution) runSink(ctx context.Context) {
 	e.sinkRan = true
 	res := e.r.Ports.Scripts.RunScript(ctx, ScriptSpec{
 		NodeID: e.g.SinkID, Label: "sink", Program: e.g.Sink().Program,
-		Stdin: e.result, Limit: e.r.Config.SinkTimeout,
+		Stdin: append(append([]byte{}, e.result...), '\n'), Limit: e.r.Config.SinkTimeout,
 	})
 	rc := res.ExitCode
 	e.sinkRC = &rc
