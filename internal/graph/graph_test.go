@@ -24,6 +24,17 @@ type fixture struct {
 	badDigest bool
 	runtime   any
 	entry     string // a label; empty leaves the entry to the edges
+	// result is the document's result section; a step's "node" is a label.
+	result []map[string]string
+}
+
+// issueFilerResult is the section circus's builder will write.
+func issueFilerResult() []map[string]string {
+	return []map[string]string{
+		{"step": "freeze-store", "node": "draft"},
+		{"step": "wake"},
+		{"step": "resolve", "builder": "issue-filer/1"},
+	}
 }
 
 func newFixture() *fixture {
@@ -71,6 +82,20 @@ func (f *fixture) fs(t *testing.T) fstest.MapFS {
 	}
 	if f.entry != "" {
 		doc["entry"] = ids[f.entry]
+	}
+	if f.result != nil {
+		var steps []map[string]string
+		for _, s := range f.result {
+			c := map[string]string{}
+			for k, v := range s {
+				if k == "node" {
+					v = ids[v]
+				}
+				c[k] = v
+			}
+			steps = append(steps, c)
+		}
+		doc["result"] = steps
 	}
 	raw, err := json.Marshal(doc)
 	if err != nil {
@@ -130,6 +155,32 @@ func TestLabelsAreDisplayNamesAndTheEntryIsTheDocuments(t *testing.T) {
 	}
 	if g.EntryID != g.DraftID {
 		t.Fatalf("entry %s, draft %s", g.EntryID, g.DraftID)
+	}
+}
+
+// FDR-0043 decision 18: the result contract is declared in the document; a
+// document that declares nothing reads as the issue-filer's list.
+func TestResultSection(t *testing.T) {
+	absent, err := Load(newFixture().fs(t), Expect{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := newFixture()
+	f.result = issueFilerResult()
+	declared, err := Load(f.fs(t), Expect{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, g := range map[string]*Graph{"absent": absent, "declared": declared} {
+		if len(g.Result) != 3 || !g.Declares(StepWake) || !g.FreezesStoresTrafficOf(g.DraftID) || g.FreezesStoresTrafficOf(g.JudgeID) {
+			t.Fatalf("%s: %+v", name, g.Result)
+		}
+		if g.Result[2].Builder != BuilderIssueFiler1 {
+			t.Fatalf("%s: builder %q", name, g.Result[2].Builder)
+		}
+	}
+	if absent.Digest == declared.Digest {
+		t.Fatal("the section is part of the document, so of its digest")
 	}
 }
 
@@ -263,6 +314,31 @@ func TestLoadRefusals(t *testing.T) {
 		{"two edges for one outcome", func(f *fixture) { f.edges = append(f.edges, [3]string{"draft", "ok", "commit"}) }, Expect{}, "two edges"},
 		{"no edge for a required outcome", func(f *fixture) { f.edges = f.edges[:2] }, Expect{}, "no edge for"},
 		{"commit kind on the sink", func(f *fixture) { f.nodes["sink"]["kind"] = "commit" }, Expect{}, "kind"},
+		{"result with an unknown step", func(f *fixture) {
+			f.result = issueFilerResult()
+			f.result[1] = map[string]string{"step": "email"}
+		}, Expect{}, "result:"},
+		{"result out of order", func(f *fixture) {
+			f.result = issueFilerResult()
+			f.result[0], f.result[1] = f.result[1], f.result[0]
+		}, Expect{}, "result:"},
+		{"result without resolve", func(f *fixture) { f.result = issueFilerResult()[:2] }, Expect{}, "result:"},
+		{"freeze-store of a node that is not an agent", func(f *fixture) {
+			f.result = issueFilerResult()
+			f.result[0]["node"] = "judge"
+		}, Expect{}, "agent node"},
+		{"freeze-store without a node", func(f *fixture) {
+			f.result = issueFilerResult()
+			delete(f.result[0], "node")
+		}, Expect{}, "agent node"},
+		{"an unknown record builder", func(f *fixture) {
+			f.result = issueFilerResult()
+			f.result[2]["builder"] = "issue-filer/2"
+		}, Expect{}, "record builder"},
+		{"a field the step does not take", func(f *fixture) {
+			f.result = issueFilerResult()
+			f.result[1]["builder"] = "issue-filer/1"
+		}, Expect{}, "only the fields"},
 		{"no threshold", func(f *fixture) { delete(f.nodes["judge"], "min_confidence") }, Expect{}, "min_confidence"},
 		{"string threshold", func(f *fixture) { f.nodes["judge"]["min_confidence"] = "0.5" }, Expect{}, "min_confidence"},
 		{"bad mode", func(f *fixture) {

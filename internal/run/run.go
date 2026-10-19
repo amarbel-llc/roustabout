@@ -270,7 +270,9 @@ func (e *execution) run(ctx context.Context) (any, int) {
 		return e.onSignal(sig)
 	}
 
-	e.wake(ctx, threshold)
+	if g.Declares(graph.StepWake) {
+		e.wake(ctx, threshold)
+	}
 	if sig := e.stopped(ctx); sig != "" {
 		return e.onSignal(sig)
 	}
@@ -456,15 +458,18 @@ func (e *execution) walk(ctx context.Context) (end rr.Ending, filed, atSink bool
 // best-effort basis.
 func (e *execution) runAgent(ctx context.Context, id string) step {
 	n := e.g.Nodes[id]
+	keep := e.g.FreezesStoresTrafficOf(id)
 	end, drafted := e.draft(ctx)
 	if drafted {
 		if sig := e.stopped(ctx); sig != "" {
 			return step{signal: sig}
 		}
-		if tend, ok := e.freezeAndStore(ctx); !ok {
-			end, drafted = tend, false
+		if keep {
+			if tend, ok := e.freezeAndStore(ctx); !ok {
+				end, drafted = tend, false
+			}
 		}
-	} else if e.fileExists("traffic.jsonl") {
+	} else if keep && e.fileExists("traffic.jsonl") {
 		if tend, ok := e.freezeAndStore(ctx); !ok {
 			e.log("%s (the run had already failed: %s)", tend.Reason, end.Why)
 		}

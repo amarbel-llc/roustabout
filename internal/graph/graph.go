@@ -60,6 +60,30 @@ type Node struct {
 	Program string `json:"program,omitempty"`
 }
 
+// The result contract's closed vocabulary (FDR-0043 decision 18): the steps a
+// document may declare, from which node's artifact, and the record builders
+// roustabout ships. A document declares which steps run; it cannot add a step,
+// reorder them or write the record's schema.
+const (
+	StepFreezeStore = "freeze-store"
+	StepWake        = "wake"
+	StepResolve     = "resolve"
+
+	// BuilderIssueFiler1 is the record builder that turns outcomes into
+	// CONTRACT.md's {state, failed_checks, reason, ...}. Version 1's semantics
+	// are in docs/generalizing-the-graph.md.
+	BuilderIssueFiler1 = "issue-filer/1"
+)
+
+// ResultStep is one step of a document's `result` section.
+type ResultStep struct {
+	Step string `json:"step"`
+	// Node is the agent node whose traffic file freeze-store keeps.
+	Node string `json:"node,omitempty"`
+	// Builder is the record builder resolve uses.
+	Builder string `json:"builder,omitempty"`
+}
+
 // kindSpec is one row of roustabout's table of node kinds (FDR-0043 decision
 // 21): the outcomes a node of the kind can end in, which of them every node of
 // the kind must have an edge for, and whether the kind may be conferred a write
@@ -111,9 +135,11 @@ type document struct {
 	Runtime *Runtime `json:"runtime,omitempty"`
 	// Entry names the node the walk starts at. Without it the entry is the one
 	// node no edge leads to.
-	Entry string          `json:"entry,omitempty"`
-	Nodes map[string]Node `json:"nodes"`
-	Edges []Edge          `json:"edges"`
+	Entry string `json:"entry,omitempty"`
+	// Result declares the result contract's steps; see ResultStep.
+	Result []ResultStep    `json:"result,omitempty"`
+	Nodes  map[string]Node `json:"nodes"`
+	Edges  []Edge          `json:"edges"`
 }
 
 // Graph is a validated issue-filer graph document.
@@ -130,6 +156,11 @@ type Graph struct {
 
 	// EntryID is the node the walk starts at.
 	EntryID string
+
+	// Result is the declared result contract. A document without a `result`
+	// section reads as today's issue-filer list (transitional: absent will be
+	// refused once circus's builder writes the section).
+	Result []ResultStep
 
 	// The four nodes, found by kind.
 	DraftID, JudgeID, CommitID, SinkID string
@@ -212,6 +243,9 @@ func Load(root fs.FS, expect Expect) (*Graph, error) {
 	}
 	g := &Graph{Digest: declared, Review: doc.Review, Runtime: doc.Runtime, Nodes: doc.Nodes, Edges: doc.Edges}
 	if err := g.validateShape(expect, doc.Entry); err != nil {
+		return nil, err
+	}
+	if err := g.checkResult(doc.Result); err != nil {
 		return nil, err
 	}
 	if err := g.verifyNodeFiles(root); err != nil {
@@ -347,6 +381,60 @@ func (g *Graph) checkEdges() error {
 			}
 		}
 	}
+	return nil
+}
+
+// Declares reports whether the document's result contract has the step.
+func (g *Graph) Declares(step string) bool {
+	for _, s := range g.Result {
+		if s.Step == step {
+			return true
+		}
+	}
+	return false
+}
+
+// FreezesStoresTrafficOf reports whether the result contract keeps the traffic
+// file of the node.
+func (g *Graph) FreezesStoresTrafficOf(id string) bool {
+	for _, s := range g.Result {
+		if s.Step == StepFreezeStore && s.Node == id {
+			return true
+		}
+	}
+	return false
+}
+
+// checkResult validates the declared result contract against the closed
+// vocabulary: freeze-store of an agent node's traffic, then wake, then resolve
+// with a record builder roustabout ships, in that order and nothing else. A
+// document that declares nothing reads as that list for the draft node.
+func (g *Graph) checkResult(declared []ResultStep) error {
+	if len(declared) == 0 {
+		g.Result = []ResultStep{
+			{Step: StepFreezeStore, Node: g.DraftID},
+			{Step: StepWake},
+			{Step: StepResolve, Builder: BuilderIssueFiler1},
+		}
+		return nil
+	}
+	if len(declared) != 3 {
+		return refuse("result: want the steps %s, %s, %s in that order, got %d steps", StepFreezeStore, StepWake, StepResolve, len(declared))
+	}
+	fs, wake, resolve := declared[0], declared[1], declared[2]
+	if fs.Step != StepFreezeStore || wake.Step != StepWake || resolve.Step != StepResolve {
+		return refuse("result: want the steps %s, %s, %s in that order, got %q, %q, %q", StepFreezeStore, StepWake, StepResolve, fs.Step, wake.Step, resolve.Step)
+	}
+	if n, ok := g.Nodes[fs.Node]; !ok || n.Kind != KindAgent {
+		return refuse("result: %s must name an agent node of the document, got %q", StepFreezeStore, fs.Node)
+	}
+	if fs.Builder != "" || wake.Node != "" || wake.Builder != "" || resolve.Node != "" {
+		return refuse("result: a step carries only the fields its kind of step takes")
+	}
+	if resolve.Builder != BuilderIssueFiler1 {
+		return refuse("result: %s names the record builder %q, which roustabout does not ship (it ships %s)", StepResolve, resolve.Builder, BuilderIssueFiler1)
+	}
+	g.Result = declared
 	return nil
 }
 

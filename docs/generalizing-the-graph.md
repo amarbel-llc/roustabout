@@ -98,6 +98,28 @@ circus's glue and `roustabout run` on the same scenarios as a regression net.
   wake and resolve left as a fixed post-walk phase in code; the `result` section
   last. The host seam (`graph.Expect`) exists and is not a step.
 
+### The `result` section (step 4) and the `issue-filer/1` record builder
+
+Merged in the loader: `result` is an ordered list in `graph.json`, covered by
+the graph digest, of exactly `{step: "freeze-store", node: <agent node id>}`,
+`{step: "wake"}` and `{step: "resolve", builder: "issue-filer/1"}`. The loader
+refuses any other step, any other order, a `freeze-store` node that is not an
+agent node, a field a step does not take, and a builder roustabout does not
+ship. The interpreter keeps the declared agent node's traffic file (freeze, then
+store, before anything is judged) and sends the declared wake. A document with
+no `result` section reads as that list for the draft node; this is transitional
+and will be refused once circus's builder writes the section. `wake` is
+declared in the document, but whether one is sent stays request-driven (no
+`notify`, no wake).
+
+`issue-filer/1` is the record builder `resolve` uses: CONTRACT.md's result
+record, `state` one of `filed`, `rejected` or `failed`, and `why` naming the
+step that took a fail edge. One semantic to state rather than leave implicit: a
+drafter whose traffic could not be frozen or stored (`traffic-not-frozen`,
+`traffic-not-stored`) is a draft node that took its fail edge, so the ledger
+entry for the draft node is `fail`, not `ok`; the run is `failed` and nothing is
+judged or committed.
+
 ## Structure checks that name no topology
 
 Node ids are digests of the node documents; the graph digest covers the
