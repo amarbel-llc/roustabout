@@ -553,7 +553,7 @@ func (e *execution) judge(ctx context.Context) (rr.Ending, bool) {
 
 	resp := e.r.Ports.Juggler.Decide(ctx, DecideRequest{
 		RunKey: e.runKey, Model: cfg.JudgeModel, Room: e.room, Parent: e.rootStanza,
-		AsRoot: e.root, Payload: payload, Limit: cfg.JudgeTimeout, Question: g.Questions[0],
+		AsRoot: e.root, Payload: payload, Limit: cfg.JudgeTimeout, Question: g.Judge().Gate,
 	})
 	if resp.ExitCode == 0 {
 		e.answersRaw = resp.Answers

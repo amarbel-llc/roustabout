@@ -30,6 +30,9 @@ type Options struct {
 	Modes     map[string]string
 	// QuestionsJSON replaces Questions as the judge's questions file.
 	QuestionsJSON string
+	// Gate replaces the default gate, "request". NoGate leaves it out.
+	Gate   string
+	NoGate bool
 	// NoSink makes the sink's program "none".
 	NoSink bool
 }
@@ -75,6 +78,12 @@ func Files(t testing.TB, o Options) fstest.MapFS {
 		questions = o.QuestionsJSON
 	}
 	judge := map[string]any{"kind": "decide", "label": "judge", "questions": graph.Digest([]byte(questions)), "min_confidence": threshold}
+	if !o.NoGate {
+		judge["gate"] = "request"
+		if o.Gate != "" {
+			judge["gate"] = o.Gate
+		}
+	}
 	if o.Modes != nil {
 		judge["modes"] = o.Modes
 	}

@@ -77,8 +77,8 @@ type DecideRequest struct {
 	AsRoot  Identity
 	Payload []byte
 	Limit   time.Duration
-	// Question is one of the graph's question names: the gating question
-	// juggler insists on naming for a multi-question payload.
+	// Question is the judge node's gate: the question juggler insists on
+	// naming for a multi-question payload.
 	Question string
 }
 

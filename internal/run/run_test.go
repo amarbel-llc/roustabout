@@ -383,12 +383,12 @@ func TestJudgeUsesTheGraphsQuestionNames(t *testing.T) {
 		return DecideResponse{HasAnswersObject: true, Answers: json.RawMessage(
 			`{"is-clean":{"choice":"ok","confidence":0.9},"voice-matches-request":{"choice":"problem","confidence":0.8}}`)}
 	}
-	r, _ := h.runner(graphtest.New(t, graphtest.Options{QuestionsJSON: `{"is-clean":{},"voice-matches-request":{}}`}))
+	r, _ := h.runner(graphtest.New(t, graphtest.Options{QuestionsJSON: `{"is-clean":{},"voice-matches-request":{}}`, Gate: "voice-matches-request"}))
 	sum, _ := r.Run(context.Background(), input(plainText))
 	s := summary(t, sum)
 	eq(t, "state", *s.State, rr.StateRejected)
 	eq(t, "failed checks", s.FailedChecks, []string{"voice-matches-request"})
-	eq(t, "gating question", h.decideReq.Question, "is-clean")
+	eq(t, "gating question", h.decideReq.Question, "voice-matches-request")
 }
 
 // scenario d2: Jev cannot be asked.

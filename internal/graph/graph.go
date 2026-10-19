@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io/fs"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -48,6 +49,9 @@ type Node struct {
 	Questions     string            `json:"questions,omitempty"`
 	MinConfidence *float64          `json:"min_confidence,omitempty"`
 	Modes         map[string]string `json:"modes,omitempty"`
+	// Gate names the question handed to `juggler decide --question`. It must
+	// be one of the questions.json keys; nothing is inferred when it is absent.
+	Gate string `json:"gate,omitempty"`
 
 	// script
 	Program string `json:"program,omitempty"`
@@ -186,6 +190,11 @@ func Load(root fs.FS, expect Expect) (*Graph, error) {
 	}
 	if g.Questions, err = questionNames(g.QuestionsJSON); err != nil {
 		return nil, err
+	}
+	if gate := g.Judge().Gate; gate == "" {
+		return nil, refuse("the judge node names no gate; it must name one of the questions %v", g.Questions)
+	} else if !slices.Contains(g.Questions, gate) {
+		return nil, refuse("the judge's gate %q is not one of the questions %v", gate, g.Questions)
 	}
 	if m := g.Judge().Modes; m != nil {
 		if err := checkModes(m, g.Questions); err != nil {

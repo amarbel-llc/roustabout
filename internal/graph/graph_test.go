@@ -29,7 +29,7 @@ func newFixture() *fixture {
 	return &fixture{
 		nodes: map[string]map[string]any{
 			"draft":  {"kind": "agent", "label": "draft", "brief": Digest([]byte(testBrief)), "moxin": testMoxin},
-			"judge":  {"kind": "decide", "label": "judge", "questions": Digest([]byte(testQuestions)), "min_confidence": 0.5},
+			"judge":  {"kind": "decide", "label": "judge", "questions": Digest([]byte(testQuestions)), "min_confidence": 0.5, "gate": "request"},
 			"commit": {"kind": "script", "label": "commit", "program": testCommit},
 			"sink":   {"kind": "script", "label": "sink", "program": "none"},
 		},
@@ -174,9 +174,13 @@ func TestLoadReadsQuestionNamesFromTheGraph(t *testing.T) {
 	f := newFixture()
 	f.questions = `{"is-clean":{},"is-faithful":{},"voice-matches-request":{}}`
 	f.nodes["judge"]["questions"] = Digest([]byte(f.questions))
+	f.nodes["judge"]["gate"] = "is-clean"
 	g, err := Load(f.fs(t), Expect{})
 	if err != nil {
 		t.Fatal(err)
+	}
+	if g.Judge().Gate != "is-clean" {
+		t.Fatalf("gate %q", g.Judge().Gate)
 	}
 	if got := strings.Join(g.Questions, ","); got != "is-clean,is-faithful,voice-matches-request" {
 		t.Fatalf("questions %s", got)
@@ -215,6 +219,8 @@ func TestLoadRefusals(t *testing.T) {
 		{"modes naming another question", func(f *fixture) {
 			f.nodes["judge"]["modes"] = map[string]string{"request": "enforce", "complete": "enforce", "repo": "enforce", "faithful": "enforce", "clean": "enforce", "other": "enforce"}
 		}, Expect{}, "mode for \"dup\""},
+		{"no gate", func(f *fixture) { delete(f.nodes["judge"], "gate") }, Expect{}, "names no gate"},
+		{"gate that is not a question", func(f *fixture) { f.nodes["judge"]["gate"] = "nope" }, Expect{}, "not one of the questions"},
 		{"no questions", func(f *fixture) {
 			f.questions = `{}`
 			f.nodes["judge"]["questions"] = Digest([]byte(f.questions))
