@@ -678,12 +678,9 @@ func (e *execution) commit(ctx context.Context) (rr.Ending, string, bool) {
 	if end, ok := rr.TrafficChanged(e.trafficSHA, nowSHA); !ok {
 		return failedCommit(end)
 	}
-	token, err := mintToken()
-	tokenFile := e.path("commit.token")
-	if err == nil {
-		err = os.WriteFile(tokenFile, []byte(token), 0o600)
-	}
+	tokenFile, err := e.conferWriteToken(g.CommitID)
 	if err != nil {
+		e.log("%v", err)
 		return failedCommit(rr.Ending{Why: rr.WhyCommitFailed, Reason: "the commit token could not be minted"})
 	}
 	res := e.r.Ports.Scripts.RunScript(ctx, ScriptSpec{
@@ -720,6 +717,27 @@ func (e *execution) commit(ctx context.Context) (rr.Ending, string, bool) {
 		return end, res.JobID, false
 	}
 	return rr.Ending{}, res.JobID, true
+}
+
+// conferWriteToken mints this run's one-run write token into a 0600 file and
+// returns the file's path, for the node alone: the token is in no argument and
+// no environment. Only a node whose kind may hold a write tool is conferred one
+// (FDR-0043 decision 21); roustabout itself never holds it. Nothing is written
+// for any other node.
+func (e *execution) conferWriteToken(id string) (string, error) {
+	n := e.g.Nodes[id]
+	if !graph.MayWrite(n) {
+		return "", fmt.Errorf("refusing to confer the write token on the %s node %q: its kind may not hold a write tool", n.Kind, n.Label)
+	}
+	token, err := mintToken()
+	if err != nil {
+		return "", err
+	}
+	file := e.path("commit.token")
+	if err := os.WriteFile(file, []byte(token), 0o600); err != nil {
+		return "", err
+	}
+	return file, nil
 }
 
 func mintToken() (string, error) {

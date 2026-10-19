@@ -49,6 +49,7 @@ type harness struct {
 	madderBody []byte
 	commitBody []byte
 	commitSpec ScriptSpec
+	sinkSpec   ScriptSpec
 	tokenMode  os.FileMode
 	tokenBody  []byte
 	sinkStdin  []byte
@@ -166,6 +167,7 @@ func (h *harness) RunScript(_ context.Context, s ScriptSpec) ScriptResult {
 		return ScriptResult{JobID: "job-commit-1", ExitCode: h.commitRC, Stdout: []byte(h.commitStdout)}
 	default:
 		h.call("sink")
+		h.sinkSpec = s
 		h.sinkStdin = s.Stdin
 		return ScriptResult{JobID: "job-sink-1", ExitCode: h.sinkRC}
 	}
@@ -854,6 +856,43 @@ func TestWakeBodyBoundCountsHTMLCharactersAsOneByte(t *testing.T) {
 	escaped := string([]byte{'\\', 'u', '0', '0', '3', 'c'})
 	if i := strings.Index(string(b), escaped); i >= 0 {
 		t.Fatalf("html characters were escaped at byte %d of %d: ...%s...", i, len(b), b[max(0, i-60):min(len(b), i+60)])
+	}
+}
+
+// FDR-0043 decision 21: only a node whose kind may hold a write tool is
+// conferred the write token, and it is conferred nothing it does not need: the
+// sink gets the result record on stdin and no token, no argument and no
+// environment.
+func TestOnlyTheCommitNodeIsConferredTheWriteToken(t *testing.T) {
+	g := graphtest.New(t, graphtest.Options{})
+	for name, id := range map[string]string{"draft": g.DraftID, "judge": g.JudgeID, "sink": g.SinkID} {
+		e := &execution{g: g, work: t.TempDir()}
+		if file, err := e.conferWriteToken(id); err == nil {
+			t.Fatalf("the %s node was conferred a token: %s", name, file)
+		}
+		if _, err := os.Stat(e.path("commit.token")); !os.IsNotExist(err) {
+			t.Fatalf("a token file was written for the %s node", name)
+		}
+	}
+	e := &execution{g: g, work: t.TempDir()}
+	file, err := e.conferWriteToken(g.CommitID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st, err := os.Stat(file); err != nil || st.Mode().Perm() != 0o600 {
+		t.Fatalf("token file %v %v", st, err)
+	}
+
+	// A whole run that ends in the sink: the sink's spec carries no token.
+	h := newHarness(t)
+	h.madder = MadderResponse{ExitCode: 1, Stderr: "permission denied"}
+	r, _ := h.runner(graphtest.New(t, graphtest.Options{}))
+	r.Run(context.Background(), input(plainText))
+	if len(h.sinkSpec.Args) != 0 || len(h.sinkSpec.Env) != 0 {
+		t.Fatalf("the sink was given arguments or an environment: %+v", h.sinkSpec)
+	}
+	if h.commitSpec.Label != "" || len(h.tokenBody) != 0 {
+		t.Fatal("a failed run must not have minted a token for the commit")
 	}
 }
 
