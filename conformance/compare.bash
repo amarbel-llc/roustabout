@@ -196,6 +196,8 @@ load_known() {
 is_accounted() { # NAME ARTIFACT
   local known_for="${accounted[$1]:-}${accounted[ALL]:-}"
   case "$known_for" in *" $2 "*) return 0 ;; esac
+  # An artifact of * accounts for every difference in the scenario.
+  case "${accounted[$1]:-}" in *" * "*) return 0 ;; esac
   return 1
 }
 
@@ -232,9 +234,13 @@ compare() { # NAME
       fi
     else
       list+=" $a"
-      details+=$'\n'"### $name: $a (< glue, > roustabout)"$'\n'"$(diff <(printf '%s\n' "$g") <(printf '%s\n' "$r") | head -n 40)"$'\n'
+      # An accounted difference is listed in the table, not spelled out.
+      is_accounted "$name" "$a" || details+=$'\n'"### $name: $a (< glue, > roustabout)"$'\n'"$(diff <(printf '%s\n' "$g") <(printf '%s\n' "$r") | head -n 40)"$'\n'
     fi
   done
+  if [ "$(cat "$out/$name/glue/fake/rc")" != "$(cat "$out/$name/rou/fake/rc")" ]; then
+    details+=$'\n'"### $name: the exit statuses differ; the end of each stderr"$'\n'"-- glue --"$'\n'"$(tail -n 8 "$out/$name/glue/stderr" | cut -c1-300)"$'\n'"-- roustabout --"$'\n'"$(tail -n 8 "$out/$name/rou/stderr" | cut -c1-300)"$'\n'
+  fi
   differs[$name]="$list"
   for a in $list; do
     is_accounted "$name" "$a" || unaccounted=1
@@ -374,6 +380,9 @@ COMMIT=none sc rv3.review-after-failed-commit draft-ok,judge-ok "$(notified "$pl
 sc rv4.no-review-before-judge draft-cannot "$(notified "$plain")"
 sc rv5.oversized-draft-body draft-ok,draft-big,judge-ok "$(notified "$plain")"
 sc sh5.shadow-wake draft-ok,judge-dup "$(notified "$plain")" shadow
+# The 32 KiB bound: first the draft bodies are dropped, then the drafts.
+sc rv6.wake-bodies-dropped draft-ok,draft-many,judge-ok "$(notified "$plain")"
+sc rv7.wake-drafts-dropped draft-ok,draft-flood,judge-ok "$(notified "$plain")"
 
 # -- idempotence on request_id --
 shared="$out/shared-f"
@@ -392,6 +401,14 @@ sig s1.term-during-drafter.group draft-slow,judge-ok "$(inp "$plain")" '^juggler
 sig s2.term-during-resolve.pid draft-ok,judge-ok,resolve-slow "$(inp "$plain")" '^juggler resolve' pid
 sig s2.term-during-resolve.group draft-ok,judge-ok,resolve-slow "$(inp "$plain")" '^juggler resolve' group
 sig s3.term-during-existing.pid existing-unresolved,newrun-slow,draft-ok,judge-ok "$(with "$plain" '. + {request_id:"req-2026-10-12-c"}')" '^juggler new-run' pid
+sig s4.term-during-repo-listing.pid listrepos-slow,draft-ok,judge-ok "$(inp "$plain")" '^list_repos ' pid
+sig s4.term-during-repo-listing.group listrepos-slow,draft-ok,judge-ok "$(inp "$plain")" '^list_repos ' group
+sig s5.term-during-madder.pid madder-slow,draft-ok,judge-ok "$(inp "$plain")" '^madder argv' pid
+sig s5.term-during-madder.group madder-slow,draft-ok,judge-ok "$(inp "$plain")" '^madder argv' group
+sig s6.term-during-judge.pid decide-slow,draft-ok,judge-ok "$(inp "$plain")" '^juggler decide' pid
+sig s6.term-during-judge.group decide-slow,draft-ok,judge-ok "$(inp "$plain")" '^juggler decide' group
+sig s7.term-during-commit.pid commit-slow,draft-ok,judge-ok "$(inp "$plain")" '^issues-commit argv' pid
+sig s7.term-during-commit.group commit-slow,draft-ok,judge-ok "$(inp "$plain")" '^issues-commit argv' group
 sig s3.term-during-existing.group existing-unresolved,newrun-slow,draft-ok,judge-ok "$(with "$plain" '. + {request_id:"req-2026-10-12-c"}')" '^juggler new-run' group
 
 # -- the rest: runs that file --

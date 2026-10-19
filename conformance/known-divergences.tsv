@@ -1,8 +1,13 @@
 # Differences between circus's glue and `roustabout run` that conformance/compare.bash
 # has found and that are accounted for. Columns, tab-separated: scenario (or *), the
-# artifact or summary.json:KEY, why. A line here only silences the report; it says
-# nothing about whether the difference is acceptable to a caller (that is in the
-# conformance report handed to circus).
+# artifact or summary.json:KEY (or * for every difference in the scenario), why. A line
+# here only silences the report; it says nothing about whether the difference is
+# acceptable to a caller (that is in the conformance report handed to circus).
 *	summary.json:ledger	roustabout adds a per-node ledger (FDR-0043 decision 1) to the summary; the glue has none. Not among the journaled fields.
 m2.bad-graph	summary.json:reason	both refuse with outcome refused, exit 2; the message names the shape each implementation runs. reason is not journaled.
 gt3.no-gate-graph	summary.json:reason	both refuse with outcome refused, exit 2; roustabout's loader finds the node file differs from graph.json (circus's no-gate variant edits graph.json alone) before it reaches the gate check, the glue names the missing gate. reason is not journaled.
+s5.term-during-madder.pid	madder.stdin	a signal during madder write: the glue waits for the call to return before its handler runs (so the stand-in finishes and keeps its stdin); roustabout cancels the call at once. Same exit 143, same interrupted summary, same resolve.
+s5.term-during-madder.group	madder.stdin	as s5.pid: in this harness the glue's timeout(1) puts the call in a process group of its own, so the group signal does not reach it either. Under systemd's control-group kill both implementations' calls are stopped.
+s7.term-during-commit.pid	*	a signal during the commit: the glue waits for the commit to return and records the issues it printed; roustabout cancels the commit at once, so the interrupted record lists no issues. Same exit 143 and summary shape. A real commit is stopped by the unit's cgroup kill in both, so what it had printed is lost in both.
+s7.term-during-commit.group	*	as s7.pid: the glue's timeout(1) keeps the commit out of the harness's process group, so the commit finishes and the glue records its issues.
+rv7.wake-drafts-dropped	*	the glue dies with `jq: Argument list too long` (exit 126, no summary, no wake, no resolve) once the traffic is about 260 KB (400 drafts), because a jq argument passes the kernel's 128 KiB single-argument limit; roustabout completes, wakes and resolves. A glue limit, not a roustabout one; not exercised by any real draft count so far.
