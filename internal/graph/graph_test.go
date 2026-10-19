@@ -108,6 +108,28 @@ func TestLoadValid(t *testing.T) {
 	}
 }
 
+// FDR-0043 decision 21: commit and sink are kinds of their own, and only the
+// commit may be conferred a write tool. The legacy script kind is read as one
+// or the other by its label.
+func TestCommitAndSinkKinds(t *testing.T) {
+	for name, kinds := range map[string][2]string{"legacy script": {"script", "script"}, "split": {"commit", "sink"}} {
+		t.Run(name, func(t *testing.T) {
+			f := newFixture()
+			f.nodes["commit"]["kind"], f.nodes["sink"]["kind"] = kinds[0], kinds[1]
+			g, err := Load(f.fs(t), Expect{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if KindOf(g.Commit()) != KindCommit || KindOf(g.Sink()) != KindSink {
+				t.Fatalf("read as %s and %s", KindOf(g.Commit()), KindOf(g.Sink()))
+			}
+			if !MayWrite(g.Commit()) || MayWrite(g.Sink()) || MayWrite(g.Draft()) || MayWrite(g.Judge()) {
+				t.Fatal("only the commit may be conferred a write tool")
+			}
+		})
+	}
+}
+
 // circus#314: the document names its runtime, and the digest covers it.
 func TestLoadRuntime(t *testing.T) {
 	withoutRuntime, err := Load(newFixture().fs(t), Expect{})
@@ -210,6 +232,10 @@ func TestLoadRefusals(t *testing.T) {
 		{"extra node field", func(f *fixture) { f.nodes["sink"]["extra"] = 1 }, Expect{}, "unknown field"},
 		{"missing edge", func(f *fixture) { f.edges = f.edges[:4] }, Expect{}, "edges"},
 		{"extra edge", func(f *fixture) { f.edges = append(f.edges, [3]string{"commit", "ok", "sink"}) }, Expect{}, "edges"},
+		{"an edge out of the sink", func(f *fixture) { f.edges = append(f.edges, [3]string{"sink", "fail", "commit"}) }, Expect{}, "not one of its outcomes"},
+		{"two edges for one outcome", func(f *fixture) { f.edges = append(f.edges, [3]string{"draft", "ok", "commit"}) }, Expect{}, "two edges"},
+		{"no edge for a required outcome", func(f *fixture) { f.edges = f.edges[:2] }, Expect{}, "no edge for"},
+		{"commit kind on the sink", func(f *fixture) { f.nodes["sink"]["kind"] = "commit" }, Expect{}, "kind"},
 		{"no threshold", func(f *fixture) { delete(f.nodes["judge"], "min_confidence") }, Expect{}, "min_confidence"},
 		{"string threshold", func(f *fixture) { f.nodes["judge"]["min_confidence"] = "0.5" }, Expect{}, "min_confidence"},
 		{"bad mode", func(f *fixture) {

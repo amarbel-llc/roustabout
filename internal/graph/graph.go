@@ -20,6 +20,13 @@ import (
 const (
 	KindAgent  = "agent"
 	KindDecide = "decide"
+	// KindCommit and KindSink are the two script kinds (FDR-0043 decision 21):
+	// only a commit may be conferred a write tool, and a sink never is.
+	KindCommit = "commit"
+	KindSink   = "sink"
+	// KindScript is the kind circus's graph builder wrote for both before the
+	// split. It is read as commit or sink by the node's label, until the builder
+	// is renamed.
 	KindScript = "script"
 
 	EdgeOK   = "ok"
@@ -56,6 +63,46 @@ type Node struct {
 	// script
 	Program string `json:"program,omitempty"`
 }
+
+// kindSpec is one row of roustabout's table of node kinds (FDR-0043 decision
+// 21): the outcomes a node of the kind can end in, which of them every node of
+// the kind must have an edge for, and whether the kind may be conferred a write
+// tool. Only a change here adds a kind.
+type kindSpec struct {
+	outcomes, required []string
+	mayWrite           bool
+}
+
+var kindTable = map[string]kindSpec{
+	KindAgent:  {outcomes: []string{EdgeOK, EdgeFail}, required: []string{EdgeOK, EdgeFail}},
+	KindDecide: {outcomes: []string{EdgeOK, EdgeFail}, required: []string{EdgeOK, EdgeFail}},
+	// A commit's ok is the end of the run, so it needs no edge for it.
+	KindCommit: {outcomes: []string{EdgeOK, EdgeFail}, mayWrite: true},
+	// A sink's end never changes the run's outcome, so it has no outgoing edge.
+	KindSink: {},
+}
+
+// KindOf is the kind a node is read as: the legacy script kind is a commit or a
+// sink by its label, and any other kind is itself.
+func KindOf(n Node) string {
+	if n.Kind == KindScript {
+		switch n.Label {
+		case KindCommit:
+			return KindCommit
+		case KindSink:
+			return KindSink
+		}
+	}
+	return n.Kind
+}
+
+// Outcomes are the outcomes a node can end in, and so the conditions its
+// outgoing edges may carry (decision 19). Today they come from the kind alone;
+// a switch node's will come from its document too.
+func Outcomes(n Node) []string { return kindTable[KindOf(n)].outcomes }
+
+// MayWrite reports whether the node's kind may be conferred a write tool.
+func MayWrite(n Node) bool { return kindTable[KindOf(n)].mayWrite }
 
 // Edge is [from, condition, to].
 type Edge [3]string
@@ -218,7 +265,7 @@ func (g *Graph) validateShape(expect Expect) error {
 	if len(g.Nodes) != 4 {
 		return refuse("want 4 nodes, got %d", len(g.Nodes))
 	}
-	wantKinds := map[string]string{"draft": KindAgent, "judge": KindDecide, "commit": KindScript, "sink": KindScript}
+	wantKinds := map[string]string{"draft": KindAgent, "judge": KindDecide, "commit": KindCommit, "sink": KindSink}
 	ids := map[string]string{}
 	for id, n := range g.Nodes {
 		if !digestPattern.MatchString(id) {
@@ -231,7 +278,7 @@ func (g *Graph) validateShape(expect Expect) error {
 		if _, dup := ids[n.Label]; dup {
 			return refuse("two nodes labelled %q", n.Label)
 		}
-		if n.Kind != kind {
+		if KindOf(n) != kind {
 			return refuse("node %q is kind %q, want %q", n.Label, n.Kind, kind)
 		}
 		ids[n.Label] = id
@@ -261,6 +308,9 @@ func (g *Graph) validateShape(expect Expect) error {
 		return refuse("sink node needs a program (%q for none)", NoSinkProgram)
 	}
 
+	if err := g.checkEdges(); err != nil {
+		return err
+	}
 	want := []Edge{
 		{g.DraftID, EdgeOK, g.JudgeID},
 		{g.JudgeID, EdgeOK, g.CommitID},
@@ -270,6 +320,42 @@ func (g *Graph) validateShape(expect Expect) error {
 	}
 	if !sameEdges(g.Edges, want) {
 		return refuse("edges are not draft-ok->judge, judge-ok->commit and each of draft, judge, commit -fail->sink")
+	}
+	return nil
+}
+
+// checkEdges is the part of the edge rules that names no topology (decision
+// 19): both ends are nodes, the condition is one of the source node's
+// outcomes, a node has at most one edge per outcome (what runs next is a
+// function of the document and the outcome), and a node has an edge for every
+// outcome its kind requires.
+func (g *Graph) checkEdges() error {
+	type key struct{ from, cond string }
+	seen := map[key]bool{}
+	for _, e := range g.Edges {
+		from, ok := g.Nodes[e.From()]
+		if !ok {
+			return refuse("edges: %v starts at a node the document does not have", e)
+		}
+		if _, ok := g.Nodes[e.To()]; !ok {
+			return refuse("edges: %v ends at a node the document does not have", e)
+		}
+		if !slices.Contains(Outcomes(from), e.Condition()) {
+			return refuse("edges: %v leaves the %s node %q on %q, which is not one of its outcomes %v",
+				e, KindOf(from), from.Label, e.Condition(), Outcomes(from))
+		}
+		k := key{e.From(), e.Condition()}
+		if seen[k] {
+			return refuse("edges: the %s node %q has two edges for %q", KindOf(from), from.Label, e.Condition())
+		}
+		seen[k] = true
+	}
+	for id, n := range g.Nodes {
+		for _, cond := range kindTable[KindOf(n)].required {
+			if !seen[key{id, cond}] {
+				return refuse("edges: the %s node %q has no edge for %q", KindOf(n), n.Label, cond)
+			}
+		}
 	}
 	return nil
 }
