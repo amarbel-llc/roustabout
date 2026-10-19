@@ -79,7 +79,7 @@ func newHarness(t *testing.T) *harness {
 
 func answers(over map[string]string) DecideResponse {
 	obj := map[string]json.RawMessage{}
-	for _, q := range graph.QuestionNames {
+	for _, q := range graphtest.QuestionNames {
 		obj[q] = json.RawMessage(`{"choice":"ok","confidence":0.9}`)
 	}
 	for q, v := range over {
@@ -373,6 +373,22 @@ func TestJudgeRejects(t *testing.T) {
 	rec := recordOf(t, h.resolves[0].Record)
 	eq(t, "record state", string(rec["state"]), `"rejected"`)
 	eq(t, "record failed checks", string(rec["failed_checks"]), `["dup"]`)
+}
+
+// The judge's questions are the graph's: renamed ones are asked, named to
+// juggler and judged.
+func TestJudgeUsesTheGraphsQuestionNames(t *testing.T) {
+	h := newHarness(t)
+	h.decide = func(DecideRequest) DecideResponse {
+		return DecideResponse{HasAnswersObject: true, Answers: json.RawMessage(
+			`{"is-clean":{"choice":"ok","confidence":0.9},"voice-matches-request":{"choice":"problem","confidence":0.8}}`)}
+	}
+	r, _ := h.runner(graphtest.New(t, graphtest.Options{QuestionsJSON: `{"is-clean":{},"voice-matches-request":{}}`}))
+	sum, _ := r.Run(context.Background(), input(plainText))
+	s := summary(t, sum)
+	eq(t, "state", *s.State, rr.StateRejected)
+	eq(t, "failed checks", s.FailedChecks, []string{"voice-matches-request"})
+	eq(t, "gating question", h.decideReq.Question, "is-clean")
 }
 
 // scenario d2: Jev cannot be asked.

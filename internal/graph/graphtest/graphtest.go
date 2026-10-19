@@ -20,11 +20,16 @@ const (
 	Questions     = `{"clean":{},"complete":{},"dup":{},"faithful":{},"repo":{},"request":{}}`
 )
 
+// QuestionNames are Questions' keys, sorted.
+var QuestionNames = []string{"clean", "complete", "dup", "faithful", "repo", "request"}
+
 // Options vary the document; the zero value is the default all-enforce graph
 // at threshold 0.5 whose sink runs SinkProgram.
 type Options struct {
 	Threshold *float64
 	Modes     map[string]string
+	// QuestionsJSON replaces Questions as the judge's questions file.
+	QuestionsJSON string
 	// NoSink makes the sink's program "none".
 	NoSink bool
 }
@@ -65,7 +70,11 @@ func Files(t testing.TB, o Options) fstest.MapFS {
 	if o.NoSink {
 		sink = graph.NoSinkProgram
 	}
-	judge := map[string]any{"kind": "decide", "label": "judge", "questions": graph.Digest([]byte(Questions)), "min_confidence": threshold}
+	questions := Questions
+	if o.QuestionsJSON != "" {
+		questions = o.QuestionsJSON
+	}
+	judge := map[string]any{"kind": "decide", "label": "judge", "questions": graph.Digest([]byte(questions)), "min_confidence": threshold}
 	if o.Modes != nil {
 		judge["modes"] = o.Modes
 	}
@@ -97,7 +106,7 @@ func Files(t testing.TB, o Options) fstest.MapFS {
 	}
 	files["graph.json"] = &fstest.MapFile{Data: raw}
 	files["graph.digest"] = &fstest.MapFile{Data: []byte(graph.Digest(raw) + "\n")}
-	files["questions.json"] = &fstest.MapFile{Data: []byte(Questions)}
+	files["questions.json"] = &fstest.MapFile{Data: []byte(questions)}
 	files["drafter.brief.toml"] = &fstest.MapFile{Data: []byte(BriefTemplate)}
 	return files
 }

@@ -33,10 +33,6 @@ const (
 	NoSinkProgram = "none"
 )
 
-// QuestionNames are the six questions the judge answers, in sorted order
-// (circus infra/hosts/krone/issue-filer/CONTRACT.md).
-var QuestionNames = []string{"clean", "complete", "dup", "faithful", "repo", "request"}
-
 var digestPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 
 // Node is one node document. Fields not used by a node's kind are zero.
@@ -101,6 +97,10 @@ type Graph struct {
 	// QuestionsJSON and BriefTOML are the files the graph names by digest.
 	QuestionsJSON []byte
 	BriefTOML     []byte
+
+	// Questions are the judge's question names: the keys of questions.json,
+	// sorted. The graph names them; roustabout holds no list of its own.
+	Questions []string
 }
 
 func (g *Graph) Draft() Node  { return g.Nodes[g.DraftID] }
@@ -117,8 +117,8 @@ func (g *Graph) QuestionModes() map[string]string {
 	if m := g.Judge().Modes; m != nil {
 		return m
 	}
-	modes := make(map[string]string, len(QuestionNames))
-	for _, q := range QuestionNames {
+	modes := make(map[string]string, len(g.Questions))
+	for _, q := range g.Questions {
 		modes[q] = ModeEnforce
 	}
 	return modes
@@ -184,8 +184,13 @@ func Load(root fs.FS, expect Expect) (*Graph, error) {
 	if got := Digest(g.QuestionsJSON); got != g.Judge().Questions {
 		return nil, refuse("questions.json %s is not the judge's questions %s", got, g.Judge().Questions)
 	}
-	if err := checkQuestionNames(g.QuestionsJSON); err != nil {
+	if g.Questions, err = questionNames(g.QuestionsJSON); err != nil {
 		return nil, err
+	}
+	if m := g.Judge().Modes; m != nil {
+		if err := checkModes(m, g.Questions); err != nil {
+			return nil, err
+		}
 	}
 	if g.BriefTOML, err = fs.ReadFile(root, "drafter.brief.toml"); err != nil {
 		return nil, refuse("no drafter.brief.toml: %v", err)
@@ -237,11 +242,6 @@ func (g *Graph) validateShape(expect Expect) error {
 	if judge.MinConfidence == nil || *judge.MinConfidence < 0 {
 		return refuse("judge node needs a non-negative numeric min_confidence")
 	}
-	if judge.Modes != nil {
-		if err := checkModes(judge.Modes); err != nil {
-			return err
-		}
-	}
 	if commit.Program == "" {
 		return refuse("commit node needs a program")
 	}
@@ -265,11 +265,12 @@ func (g *Graph) validateShape(expect Expect) error {
 	return nil
 }
 
-func checkModes(modes map[string]string) error {
-	if len(modes) != len(QuestionNames) {
-		return refuse("the judge's modes are not the six questions")
+// checkModes requires the judge's modes to cover exactly the questions.
+func checkModes(modes map[string]string, questions []string) error {
+	if len(modes) != len(questions) {
+		return refuse("the judge's modes %v are not the questions %v", sortedKeys(modes), questions)
 	}
-	for _, q := range QuestionNames {
+	for _, q := range questions {
 		switch modes[q] {
 		case ModeEnforce, ModeShadow, ModeEnforcePublic:
 		default:
@@ -279,20 +280,25 @@ func checkModes(modes map[string]string) error {
 	return nil
 }
 
-func checkQuestionNames(questionsJSON []byte) error {
+func sortedKeys[V any](m map[string]V) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// questionNames reads the question names from questions.json's keys.
+func questionNames(questionsJSON []byte) ([]string, error) {
 	var q map[string]json.RawMessage
 	if err := json.Unmarshal(questionsJSON, &q); err != nil {
-		return refuse("questions.json is not an object: %v", err)
+		return nil, refuse("questions.json is not an object: %v", err)
 	}
-	got := make([]string, 0, len(q))
-	for k := range q {
-		got = append(got, k)
+	if len(q) == 0 {
+		return nil, refuse("questions.json names no questions")
 	}
-	sort.Strings(got)
-	if strings.Join(got, ",") != strings.Join(QuestionNames, ",") {
-		return refuse("questions.json keys are %v, want %v", got, QuestionNames)
-	}
-	return nil
+	return sortedKeys(q), nil
 }
 
 func sameEdges(got, want []Edge) bool {

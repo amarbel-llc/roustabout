@@ -95,7 +95,10 @@ func TestLoadValid(t *testing.T) {
 	if g.HasSinkProgram() {
 		t.Fatal("sink program is none")
 	}
-	for _, q := range QuestionNames {
+	if got := strings.Join(g.Questions, ","); got != "clean,complete,dup,faithful,repo,request" {
+		t.Fatalf("questions %s", got)
+	}
+	for _, q := range g.Questions {
 		if g.QuestionModes()[q] != ModeEnforce {
 			t.Fatalf("question %s should default to enforce", q)
 		}
@@ -165,6 +168,32 @@ func TestLoadModes(t *testing.T) {
 	}
 }
 
+// The question names are the graph's: renamed questions load, and the modes
+// have to cover exactly those keys.
+func TestLoadReadsQuestionNamesFromTheGraph(t *testing.T) {
+	f := newFixture()
+	f.questions = `{"is-clean":{},"is-faithful":{},"voice-matches-request":{}}`
+	f.nodes["judge"]["questions"] = Digest([]byte(f.questions))
+	g, err := Load(f.fs(t), Expect{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(g.Questions, ","); got != "is-clean,is-faithful,voice-matches-request" {
+		t.Fatalf("questions %s", got)
+	}
+	if len(g.QuestionModes()) != 3 || g.QuestionModes()["is-clean"] != ModeEnforce {
+		t.Fatalf("default modes %v", g.QuestionModes())
+	}
+	f.nodes["judge"]["modes"] = map[string]string{"is-clean": "enforce", "is-faithful": "shadow", "voice-matches-request": "enforce"}
+	if g, err = Load(f.fs(t), Expect{}); err != nil || g.QuestionModes()["is-faithful"] != ModeShadow {
+		t.Fatalf("modes over renamed questions: %v", err)
+	}
+	f.nodes["judge"]["modes"] = map[string]string{"clean": "enforce", "is-faithful": "enforce", "voice-matches-request": "enforce"}
+	if _, err := Load(f.fs(t), Expect{}); err == nil {
+		t.Fatal("modes that miss a question should be refused")
+	}
+}
+
 func TestLoadRefusals(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -182,11 +211,14 @@ func TestLoadRefusals(t *testing.T) {
 		{"bad mode", func(f *fixture) {
 			f.nodes["judge"]["modes"] = map[string]string{"request": "maybe", "complete": "enforce", "repo": "enforce", "faithful": "enforce", "clean": "enforce", "dup": "enforce"}
 		}, Expect{}, "mode"},
-		{"short modes", func(f *fixture) { f.nodes["judge"]["modes"] = map[string]string{"request": "enforce"} }, Expect{}, "six questions"},
-		{"five questions", func(f *fixture) {
-			f.questions = `{"clean":{},"complete":{},"dup":{},"faithful":{},"repo":{}}`
+		{"short modes", func(f *fixture) { f.nodes["judge"]["modes"] = map[string]string{"request": "enforce"} }, Expect{}, "are not the questions"},
+		{"modes naming another question", func(f *fixture) {
+			f.nodes["judge"]["modes"] = map[string]string{"request": "enforce", "complete": "enforce", "repo": "enforce", "faithful": "enforce", "clean": "enforce", "other": "enforce"}
+		}, Expect{}, "mode for \"dup\""},
+		{"no questions", func(f *fixture) {
+			f.questions = `{}`
 			f.nodes["judge"]["questions"] = Digest([]byte(f.questions))
-		}, Expect{}, "questions.json keys"},
+		}, Expect{}, "names no questions"},
 		{"questions file swapped", func(f *fixture) { f.questions = `{"other":1}` }, Expect{}, "is not the judge's questions"},
 		{"brief file swapped", func(f *fixture) { f.brief = "different" }, Expect{}, "is not the draft node's brief"},
 		{"wrong moxin", func(f *fixture) {}, Expect{Moxin: "/nix/store/zzz"}, "moxin"},

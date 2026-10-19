@@ -229,7 +229,7 @@ func TestJugglerSpawnAgentCannotComplete(t *testing.T) {
 func TestJugglerDecideAsTheRootWithoutTheMinter(t *testing.T) {
 	x, log := newExec(t, `HELPER_STDOUT={"answers":{"request":{"choice":"ok","confidence":0.9}},"reason":"fine"}`)
 	j := &Juggler{X: x, Bin: os.Args[0], Mint: []string{"TROUPE_MINT_USER=minter"}}
-	resp := j.Decide(context.Background(), run.DecideRequest{RunKey: "k", Model: "jev", Room: "r@d", Parent: "chat-1", AsRoot: identity, Payload: []byte(`{"state":{}}`), Limit: time.Second})
+	resp := j.Decide(context.Background(), run.DecideRequest{RunKey: "k", Model: "jev", Room: "r@d", Parent: "chat-1", AsRoot: identity, Payload: []byte(`{"state":{}}`), Limit: time.Second, Question: "request"})
 	if !resp.HasAnswersObject || !strings.Contains(string(resp.Answers), `"request"`) || resp.Reason != "fine" {
 		t.Fatalf("%+v", resp)
 	}

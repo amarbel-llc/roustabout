@@ -113,7 +113,7 @@ func (j *Juggler) SpawnAgent(ctx context.Context, r run.SpawnRequest) run.SpawnR
 func (j *Juggler) Decide(ctx context.Context, r run.DecideRequest) run.DecideResponse {
 	args := []string{
 		"decide", "--run-key", r.RunKey, "--model", r.Model, "--room", r.Room, "--parent", r.Parent,
-		"--min-confidence", "0", "--question", "request",
+		"--min-confidence", "0", "--question", r.Question,
 	}
 	out := j.X.Run(ctx, r.Limit, rootEnv(r.AsRoot), r.Payload, j.Bin, args...)
 	resp := run.DecideResponse{ExitCode: out.RC, Stderr: out.Stderr}

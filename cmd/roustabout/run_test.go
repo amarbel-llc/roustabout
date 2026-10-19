@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"code.linenisgreat.com/roustabout/internal/graph"
 	"code.linenisgreat.com/roustabout/internal/graph/graphtest"
 	"code.linenisgreat.com/roustabout/internal/run"
 )
@@ -32,7 +31,7 @@ func (p okPorts) SpawnAgent(context.Context, run.SpawnRequest) run.SpawnResponse
 
 func (okPorts) Decide(context.Context, run.DecideRequest) run.DecideResponse {
 	answers := map[string]map[string]any{}
-	for _, q := range graph.QuestionNames {
+	for _, q := range graphtest.QuestionNames {
 		answers[q] = map[string]any{"choice": "ok", "confidence": 0.9}
 	}
 	b, _ := json.Marshal(answers)

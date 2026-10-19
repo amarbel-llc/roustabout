@@ -553,7 +553,7 @@ func (e *execution) judge(ctx context.Context) (rr.Ending, bool) {
 
 	resp := e.r.Ports.Juggler.Decide(ctx, DecideRequest{
 		RunKey: e.runKey, Model: cfg.JudgeModel, Room: e.room, Parent: e.rootStanza,
-		AsRoot: e.root, Payload: payload, Limit: cfg.JudgeTimeout,
+		AsRoot: e.root, Payload: payload, Limit: cfg.JudgeTimeout, Question: g.Questions[0],
 	})
 	if resp.ExitCode == 0 {
 		e.answersRaw = resp.Answers
@@ -568,7 +568,7 @@ func (e *execution) judge(ctx context.Context) (rr.Ending, bool) {
 	}
 
 	threshold := g.Threshold()
-	verdict := rr.Judge(graph.QuestionNames, answers, threshold, g.QuestionModes(), rr.AnyPublic(st.RepoListings()))
+	verdict := rr.Judge(g.Questions, answers, threshold, g.QuestionModes(), rr.AnyPublic(st.RepoListings()))
 	e.failed, e.shadow = verdict.Failed, verdict.ShadowFailed
 	if len(verdict.ShadowFailed) > 0 {
 		e.log("Jev would have rejected on %s (shadow; not enforced)", strings.Join(verdict.ShadowFailed, ", "))
