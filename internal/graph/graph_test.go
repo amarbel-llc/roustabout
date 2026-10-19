@@ -30,8 +30,8 @@ func newFixture() *fixture {
 		nodes: map[string]map[string]any{
 			"draft":  {"kind": "agent", "label": "draft", "brief": Digest([]byte(testBrief)), "moxin": testMoxin},
 			"judge":  {"kind": "decide", "label": "judge", "questions": Digest([]byte(testQuestions)), "min_confidence": 0.5, "gate": "request"},
-			"commit": {"kind": "script", "label": "commit", "program": testCommit},
-			"sink":   {"kind": "script", "label": "sink", "program": "none"},
+			"commit": {"kind": "commit", "label": "commit", "program": testCommit},
+			"sink":   {"kind": "sink", "label": "sink", "program": "none"},
 		},
 		edges: [][3]string{
 			{"draft", "ok", "judge"},
@@ -109,24 +109,20 @@ func TestLoadValid(t *testing.T) {
 }
 
 // FDR-0043 decision 21: commit and sink are kinds of their own, and only the
-// commit may be conferred a write tool. The legacy script kind is read as one
-// or the other by its label.
+// commit may be conferred a write tool. The old kind script, which circus's
+// builder wrote for both, is refused.
 func TestCommitAndSinkKinds(t *testing.T) {
-	for name, kinds := range map[string][2]string{"legacy script": {"script", "script"}, "split": {"commit", "sink"}} {
-		t.Run(name, func(t *testing.T) {
-			f := newFixture()
-			f.nodes["commit"]["kind"], f.nodes["sink"]["kind"] = kinds[0], kinds[1]
-			g, err := Load(f.fs(t), Expect{})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if KindOf(g.Commit()) != KindCommit || KindOf(g.Sink()) != KindSink {
-				t.Fatalf("read as %s and %s", KindOf(g.Commit()), KindOf(g.Sink()))
-			}
-			if !MayWrite(g.Commit()) || MayWrite(g.Sink()) || MayWrite(g.Draft()) || MayWrite(g.Judge()) {
-				t.Fatal("only the commit may be conferred a write tool")
-			}
-		})
+	g, err := Load(newFixture().fs(t), Expect{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !MayWrite(g.Commit()) || MayWrite(g.Sink()) || MayWrite(g.Draft()) || MayWrite(g.Judge()) {
+		t.Fatal("only the commit may be conferred a write tool")
+	}
+	f := newFixture()
+	f.nodes["commit"]["kind"], f.nodes["sink"]["kind"] = "script", "script"
+	if _, err := Load(f.fs(t), Expect{}); err == nil {
+		t.Fatal("the old script kind should be refused")
 	}
 }
 
@@ -280,7 +276,7 @@ func TestLoadRefusesTamperedNodeFile(t *testing.T) {
 	files := f.fs(t)
 	for name := range files {
 		if strings.HasPrefix(name, "nodes/") {
-			files[name] = &fstest.MapFile{Data: []byte(`{"kind":"script","label":"sink","program":"x"}`)}
+			files[name] = &fstest.MapFile{Data: []byte(`{"kind":"sink","label":"sink","program":"x"}`)}
 			break
 		}
 	}

@@ -323,7 +323,7 @@ func TestHappyPath(t *testing.T) {
 
 	// The run-level ledger names each node by digest, job and edge.
 	eq(t, "ledger nodes", len(s.Ledger), 3)
-	eq(t, "commit entry", s.Ledger[2], rr.LedgerEntry{Node: g.CommitID, Label: "commit", Kind: "script", Job: "job-commit-1", Verdict: "filed", Edge: "ok"})
+	eq(t, "commit entry", s.Ledger[2], rr.LedgerEntry{Node: g.CommitID, Label: "commit", Kind: "commit", Job: "job-commit-1", Verdict: "filed", Edge: "ok"})
 
 	// The scratch directory (and the token in it) is gone.
 	left, _ := filepath.Glob(filepath.Join(filepath.Dir(h.trafficAt), "*"))

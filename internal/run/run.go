@@ -593,7 +593,7 @@ func (e *execution) commit(ctx context.Context) (rr.Ending, bool) {
 	g, cfg := e.g, e.r.Config
 	frozen := e.path("traffic.frozen.jsonl")
 	failedCommit := func(end rr.Ending) (rr.Ending, bool) {
-		e.record(g.CommitID, "commit", graph.KindScript, "", string(end.Why), graph.EdgeFail)
+		e.record(g.CommitID, "commit", graph.KindCommit, "", string(end.Why), graph.EdgeFail)
 		return end, false
 	}
 	var nowSHA string
@@ -643,10 +643,10 @@ func (e *execution) commit(ctx context.Context) (rr.Ending, bool) {
 		Stderr: res.Stderr, TimeoutLimit: limit(cfg.CommitTimeout),
 	})
 	if !ok {
-		e.record(g.CommitID, "commit", graph.KindScript, res.JobID, string(end.Why), graph.EdgeFail)
+		e.record(g.CommitID, "commit", graph.KindCommit, res.JobID, string(end.Why), graph.EdgeFail)
 		return end, false
 	}
-	e.record(g.CommitID, "commit", graph.KindScript, res.JobID, "filed", graph.EdgeOK)
+	e.record(g.CommitID, "commit", graph.KindCommit, res.JobID, "filed", graph.EdgeOK)
 	return rr.Ending{}, true
 }
 
@@ -677,7 +677,7 @@ func (e *execution) runSink(ctx context.Context) {
 	})
 	rc := res.ExitCode
 	e.sinkRC = &rc
-	e.record(e.g.SinkID, "sink", graph.KindScript, res.JobID, fmt.Sprintf("exit %d", rc), "")
+	e.record(e.g.SinkID, "sink", graph.KindSink, res.JobID, fmt.Sprintf("exit %d", rc), "")
 	if rc != 0 {
 		e.log("the sink %s exited %d; the outcome is unchanged", e.g.Sink().Program, rc)
 	}

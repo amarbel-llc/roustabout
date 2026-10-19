@@ -90,8 +90,8 @@ func Files(t testing.TB, o Options) fstest.MapFS {
 	nodes := map[string]map[string]any{
 		"draft":  {"kind": "agent", "label": "draft", "brief": graph.Digest([]byte(BriefTemplate)), "moxin": Moxin},
 		"judge":  judge,
-		"commit": {"kind": "script", "label": "commit", "program": CommitProgram},
-		"sink":   {"kind": "script", "label": "sink", "program": sink},
+		"commit": {"kind": "commit", "label": "commit", "program": CommitProgram},
+		"sink":   {"kind": "sink", "label": "sink", "program": sink},
 	}
 	files := fstest.MapFS{}
 	ids := map[string]string{}
