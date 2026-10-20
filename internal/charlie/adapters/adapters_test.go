@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"code.linenisgreat.com/roustabout/internal/run"
+	"code.linenisgreat.com/roustabout/internal/bravo/run"
 )
 
 // The test binary stands in for every program the adapters run: with

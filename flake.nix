@@ -148,6 +148,21 @@
         checks.formatting = eval.config.build.check self;
         # godyn's per-package test lane from go.nix. `just test-go` builds this.
         checks.tests = roustabout.passthru.checkAll or roustabout;
+        # internal/<level>/<leaf> must match dagnabit's computed dependency
+        # height (`just lint-layout`), so the package hierarchy stays a DAG a
+        # reader can see and godyn's per-package cache stays as fine-grained as
+        # the imports allow. Same shape as circus-cli's circus-cli-layout.
+        checks.layout = roustabout.passthru.codegenCheck {
+          command = ''
+            moves=$(dagnabit -n internal)
+            if [ -n "$moves" ]; then
+              echo "$moves"
+              echo "FAIL: dagnabit would move packages (above); move them by hand (git mv) to the level shown and fix the import paths." >&2
+              exit 1
+            fi
+          '';
+          nativeBuildInputs = [ purse-first.packages.${system}.dagnabit ];
+        };
         packages.conformist-impure-config = impureEval.config.build.configFile;
 
         # A git pre-commit hook running THIS repo's config (conformist#47/#51):

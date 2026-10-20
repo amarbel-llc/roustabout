@@ -48,7 +48,19 @@ test-conformance hosts=(env('HOME') / "eng/repos/circus/infra/hosts") *scenarios
 
 # --- lint ---
 
-lint: lint-fmt
+lint: lint-fmt lint-layout
+
+# internal/<level>/<leaf> must sit at the NATO level dagnabit computes from its
+# imports (checks.layout). On failure the log names each package and the level
+# to move it to; move it by hand (git mv) and fix the import paths.
+#
+# check the Go package levels against dagnabit
+[group('lint')]
+lint-layout:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    system=$(nix eval --raw --impure --expr 'builtins.currentSystem')
+    nix build ".#checks.${system}.layout" --no-link --print-build-logs
 
 # Read-only formatting + the eng/eng-go preset's file-based linters, via the
 # sandboxed checks.formatting derivation.

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"code.linenisgreat.com/roustabout/internal/graph"
-	"code.linenisgreat.com/roustabout/internal/graph/graphtest"
+	"code.linenisgreat.com/roustabout/internal/0/graph"
+	"code.linenisgreat.com/roustabout/internal/0/graph/graphtest"
 )
 
 func check(t *testing.T, args ...string) (int, map[string]any) {

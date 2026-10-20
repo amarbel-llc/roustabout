@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"strings"
 
-	"code.linenisgreat.com/roustabout/internal/graph"
+	"code.linenisgreat.com/roustabout/internal/0/graph"
 )
 
 // Marshal is json.Marshal without HTML escaping. The glue builds its JSON with

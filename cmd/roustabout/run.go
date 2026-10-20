@@ -13,10 +13,10 @@ import (
 
 	"code.linenisgreat.com/purse-first/libs/go-mcp/command"
 
-	"code.linenisgreat.com/roustabout/internal/adapters"
-	"code.linenisgreat.com/roustabout/internal/graph"
-	"code.linenisgreat.com/roustabout/internal/run"
-	rr "code.linenisgreat.com/roustabout/internal/runrecord"
+	"code.linenisgreat.com/roustabout/internal/0/graph"
+	rr "code.linenisgreat.com/roustabout/internal/alfa/runrecord"
+	"code.linenisgreat.com/roustabout/internal/bravo/run"
+	"code.linenisgreat.com/roustabout/internal/charlie/adapters"
 )
 
 // runOptions are what a host supplies to `roustabout run`; the graph document

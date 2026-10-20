@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"code.linenisgreat.com/roustabout/internal/graph/graphtest"
-	"code.linenisgreat.com/roustabout/internal/run"
+	"code.linenisgreat.com/roustabout/internal/0/graph/graphtest"
+	"code.linenisgreat.com/roustabout/internal/bravo/run"
 )
 
 // okPorts is every port answering as a clean run does.

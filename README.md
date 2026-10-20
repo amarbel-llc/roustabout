@@ -186,16 +186,16 @@ roustabout, not its owner.
 **Status:** a Go module on purse-first's go-mcp `command` framework.
 
 - Built and tested against fakes of every port, following the glue's
-  `test/scenarios.bash`: the graph document loader (`internal/graph`, one
+  `test/scenarios.bash`: the graph document loader (`internal/0/graph`, one
   shape, digests checked, an optional `runtime` object naming the juggler,
   moxy and glue store paths so the digest covers them, circus#314); the
-  request parser and run key (`internal/request`); the result record, judge
-  verdicts, reasons, summary and exit codes (`internal/runrecord`); the
-  interpreter (`internal/run`): start, draft, freeze, store, judge, commit,
+  request parser and run key (`internal/0/request`); the result record, judge
+  verdicts, reasons, summary and exit codes (`internal/alfa/runrecord`); the
+  interpreter (`internal/bravo/run`): start, draft, freeze, store, judge, commit,
   sink, the exit wake, resolve with retries, and the signal path; and
   `roustabout run`.
 - Written but **never run against a live juggler, madder, troupe or
-  ringmaster**: the exec adapters (`internal/adapters`). They are tested only
+  ringmaster**: the exec adapters (`internal/charlie/adapters`). They are tested only
   against the test binary standing in for each program, with flags copied
   from what the circus glue passes (clown 814d90a0). Script nodes (commit,
   sink) run as ringmaster jobs through `ringmaster start` and `done`.

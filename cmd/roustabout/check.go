@@ -10,8 +10,8 @@ import (
 
 	"code.linenisgreat.com/purse-first/libs/go-mcp/command"
 
-	"code.linenisgreat.com/roustabout/internal/graph"
-	rr "code.linenisgreat.com/roustabout/internal/runrecord"
+	"code.linenisgreat.com/roustabout/internal/0/graph"
+	rr "code.linenisgreat.com/roustabout/internal/alfa/runrecord"
 )
 
 // executeCheck loads a graph document the way `roustabout run` does, against the

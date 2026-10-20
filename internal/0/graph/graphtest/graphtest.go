@@ -9,7 +9,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"code.linenisgreat.com/roustabout/internal/graph"
+	"code.linenisgreat.com/roustabout/internal/0/graph"
 )
 
 const (

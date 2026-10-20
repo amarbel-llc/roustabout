@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"code.linenisgreat.com/roustabout/internal/graph"
-	"code.linenisgreat.com/roustabout/internal/graph/graphtest"
-	rr "code.linenisgreat.com/roustabout/internal/runrecord"
+	"code.linenisgreat.com/roustabout/internal/0/graph"
+	"code.linenisgreat.com/roustabout/internal/0/graph/graphtest"
+	rr "code.linenisgreat.com/roustabout/internal/alfa/runrecord"
 )
 
 const (

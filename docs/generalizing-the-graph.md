@@ -30,14 +30,14 @@ sentences (the host).
 
 ## Where the code stands
 
-Steps 1 to 3 of decision 22 are merged. The loader (`internal/graph`) has the
+Steps 1 to 3 of decision 22 are merged. The loader (`internal/0/graph`) has the
 kind table (outcomes, required outcomes and may-write per kind), finds the four
 nodes by kind with labels as display names only, takes the entry from the
 document's optional `entry` field or the one node no edge leads to, checks every
 edge against the source node's outcomes, and refuses unreachable nodes and
 cycles. It still enforces exactly the issue-filer topology on top of that: one
 node of each of agent, decide, commit and sink, and five fixed edges. The
-interpreter (`internal/run`) is a walker: from the entry it runs each node by
+interpreter (`internal/bravo/run`) is a walker: from the entry it runs each node by
 its kind (agent, decide, commit) and takes the edge its outcome names. Not yet
 document-driven: the sink, the exit wake and `resolve` are a fixed phase after
 the walk (step 4 declares them in a `result` section); freeze-and-store is part

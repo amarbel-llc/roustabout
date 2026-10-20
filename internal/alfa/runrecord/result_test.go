@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"code.linenisgreat.com/roustabout/internal/graph"
+	"code.linenisgreat.com/roustabout/internal/0/graph"
 )
 
 var questionNames = []string{"clean", "complete", "dup", "faithful", "repo", "request"}

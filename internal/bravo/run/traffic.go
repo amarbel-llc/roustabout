@@ -10,7 +10,7 @@ import (
 	"sort"
 	"strings"
 
-	rr "code.linenisgreat.com/roustabout/internal/runrecord"
+	rr "code.linenisgreat.com/roustabout/internal/alfa/runrecord"
 )
 
 // The traffic file is the issues moxin's record of the run: one JSON object
