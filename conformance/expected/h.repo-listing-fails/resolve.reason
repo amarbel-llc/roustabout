@@ -1,0 +1,11 @@
+{
+  "failed_checks": [],
+  "graph_digest": "<graph-digest>",
+  "issues": [],
+  "not_filed": [],
+  "reason": "the repository list could not be read: list_repos: the cutting-garden origin did not answer; nothing was written",
+  "run_key": "issue-filer-1760313600123-79c82954",
+  "shadow_failed_checks": [],
+  "state": "failed",
+  "traffic_blob": "madder://blobs/fake-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

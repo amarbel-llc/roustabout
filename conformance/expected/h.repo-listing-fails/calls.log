@@ -1,0 +1,5 @@
+juggler new-run as=/@/ argv: spawn --new-run --run-key issue-filer-1760313600123-79c82954 --input <TMP>/<scratch>/request.json --room-domain runs.example.invalid --operator-jid operator@xmpp.example.invalid --issuer issue-filer-test
+list_repos mode=real issues_mode=record
+madder argv: write -
+sink
+juggler resolve as=/@/ argv: resolve job-run-1 --state=failed --reason=\{\"state\":\"failed\"\,\"run_key\":\"issue-filer-1760313600123-79c82954\"\,\"graph_digest\":\"<graph-digest>\"\,\"issues\":\[\]\,\"not_filed\":\[\]\,\"failed_checks\":\[\]\,\"shadow_failed_checks\":\[\]\,\"traffic_blob\":\"madder://blobs/fake-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\,\"reason\":\"the\ repository\ list\ could\ not\ be\ read:\ list_repos:\ the\ cutting-garden\ origin\ did\ not\ answer\;\ nothing\ was\ written\"\} --fallback-artifacts=\[\]

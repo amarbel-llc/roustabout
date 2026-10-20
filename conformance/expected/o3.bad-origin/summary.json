@@ -1,0 +1,4 @@
+{
+  "outcome": "refused",
+  "reason": "origin must be a short lower-case name (pebble, or a session's)"
+}

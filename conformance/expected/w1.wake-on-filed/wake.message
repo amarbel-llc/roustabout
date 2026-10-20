@@ -1,0 +1,89 @@
+issue-filer issue-filer-1760313600123-79c82954 filed
+{
+  "kind": "run-exit",
+  "request_id": null,
+  "result": {
+    "failed_checks": [],
+    "graph_digest": "<graph-digest>",
+    "issues": [
+      {
+        "number": 50,
+        "repo": "linenisgreat/moxy",
+        "uri": "smith://forge.example.invalid/linenisgreat/moxy/issues/50"
+      }
+    ],
+    "not_filed": [],
+    "run_key": "issue-filer-1760313600123-79c82954",
+    "shadow_failed_checks": [],
+    "state": "filed",
+    "traffic_blob": "madder://blobs/fake-a9efe82aff1284690193683e06daf64f87d36f932c2812a66b5aba47f6527ebc"
+  },
+  "review": {
+    "answers": {
+      "draft-says-what-the-requester-said-and-nothing-else": {
+        "choice": "ok",
+        "confidence": 0.9,
+        "probabilities": {
+          "ok": 0.9
+        },
+        "type": "choice"
+      },
+      "explicit-instruction-to-file": {
+        "choice": "ok",
+        "confidence": 0.9,
+        "probabilities": {
+          "ok": 0.9
+        },
+        "type": "choice"
+      },
+      "no-duplicate-of-existing-issue": {
+        "choice": "ok",
+        "confidence": 0.9,
+        "probabilities": {
+          "ok": 0.9
+        },
+        "type": "choice"
+      },
+      "no-sensitive-content": {
+        "choice": "ok",
+        "confidence": 0.9,
+        "probabilities": {
+          "ok": 0.9
+        },
+        "type": "choice"
+      },
+      "one-draft-per-requested-issue": {
+        "choice": "ok",
+        "confidence": 0.9,
+        "probabilities": {
+          "ok": 0.9
+        },
+        "type": "choice"
+      },
+      "right-repo-not-a-mirror": {
+        "choice": "ok",
+        "confidence": 0.9,
+        "probabilities": {
+          "ok": 0.9
+        },
+        "type": "choice"
+      }
+    },
+    "drafts": [
+      {
+        "body": "the restart tool should reconnect automatically",
+        "repo": "linenisgreat/moxy",
+        "repo_listing": "linenisgreat/moxy",
+        "title": "Restart tool should reconnect automatically"
+      }
+    ],
+    "threshold": 0.5,
+    "validation": {
+      "duplicate_search_recorded": true,
+      "pii_scan": "clean",
+      "repo_is_mirror": false,
+      "repo_listed": true
+    }
+  },
+  "run_key": "issue-filer-1760313600123-79c82954"
+}

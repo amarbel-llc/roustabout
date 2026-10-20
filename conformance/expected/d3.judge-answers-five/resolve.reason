@@ -1,0 +1,13 @@
+{
+  "failed_checks": [
+    "no-duplicate-of-existing-issue"
+  ],
+  "graph_digest": "<graph-digest>",
+  "issues": [],
+  "not_filed": [],
+  "reason": "Jev did not pass the drafts (threshold 0.5): no-duplicate-of-existing-issue: no answer at no confidence",
+  "run_key": "issue-filer-1760313600123-79c82954",
+  "shadow_failed_checks": [],
+  "state": "rejected",
+  "traffic_blob": "madder://blobs/fake-a9efe82aff1284690193683e06daf64f87d36f932c2812a66b5aba47f6527ebc"
+}

@@ -1,0 +1,1 @@
+juggler new-run as=/@/ argv: spawn --new-run --run-key issue-filer-4f4bd5f4bb500c73 --input <TMP>/<scratch>/request.json --room-domain runs.example.invalid --operator-jid operator@xmpp.example.invalid --issuer issue-filer-test

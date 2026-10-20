@@ -1,0 +1,8 @@
+juggler new-run as=/@/ argv: spawn --new-run --run-key issue-filer-1760313600123-79c82954 --input <TMP>/<scratch>/request.json --room-domain runs.example.invalid --operator-jid operator@xmpp.example.invalid --issuer issue-filer-test
+list_repos mode=real issues_mode=record
+juggler spawn-agent as=root-uuid-1/root-uuid-1@xmpp.example.invalid//fake/root.pass argv: spawn --brief <TMP>/<scratch>/brief.toml --task <TMP>/<scratch>/task --run-key issue-filer-1760313600123-79c82954 --wait --timeout 150s --user
+madder argv: write -
+juggler decide as=root-uuid-1/root-uuid-1@xmpp.example.invalid//fake/root.pass argv: decide --run-key issue-filer-1760313600123-79c82954 --model jev --room issue-filer-1760313600123-79c82954@runs.example.invalid --parent chat-request-1 --min-confidence 0 --question explicit-instruction-to-file
+issues-commit argv: <TMP>/<scratch>/traffic.frozen.jsonl <TMP>/<scratch>/commit.token
+sink
+juggler resolve as=/@/ argv: resolve job-run-1 --state=failed --reason=\{\"state\":\"failed\"\,\"run_key\":\"issue-filer-1760313600123-79c82954\"\,\"graph_digest\":\"<graph-digest>\"\,\"issues\":\[\]\,\"not_filed\":\[\{\"repo\":\"linenisgreat/moxy\"\,\"title\":\"Restart\ tool\ should\ reconnect\ automatically\"\,\"reason\":\"create_issue\ failed:\ 502\ bad\ gateway\"\}\]\,\"failed_checks\":\[\]\,\"shadow_failed_checks\":\[\]\,\"traffic_blob\":\"madder://blobs/fake-a9efe82aff1284690193683e06daf64f87d36f932c2812a66b5aba47f6527ebc\"\,\"reason\":\"the\ commit\ filed\ nothing\"\} --fallback-artifacts=\[\]

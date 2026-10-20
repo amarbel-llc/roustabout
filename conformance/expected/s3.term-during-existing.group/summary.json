@@ -1,0 +1,8 @@
+{
+  "existing": false,
+  "outcome": "interrupted",
+  "resolved": false,
+  "run_job": "",
+  "run_key": "issue-filer-8f2ae9b5773c9967",
+  "signal": "TERM"
+}

@@ -1,0 +1,36 @@
+{
+  "existing": false,
+  "failed_checks": [],
+  "graph_digest": "<graph-digest>",
+  "issues": [],
+  "ledger": [
+    {
+      "edge": "fail",
+      "kind": "agent",
+      "label": "draft",
+      "node": "<node:draft>",
+      "verdict": "traffic-not-stored"
+    },
+    {
+      "job": "job-script-1",
+      "kind": "sink",
+      "label": "sink",
+      "node": "<node:sink>",
+      "verdict": "exit 0"
+    }
+  ],
+  "min_confidence": 0.5,
+  "not_filed": [],
+  "outcome": "failure",
+  "reason": "the traffic file was not stored: madder write exited 1 (madder: write: open store: permission denied); it printed: ",
+  "resolved": true,
+  "room": "issue-filer-1760313600123-79c82954@runs.example.invalid",
+  "run_job": "job-run-1",
+  "run_key": "issue-filer-1760313600123-79c82954",
+  "shadow_failed_checks": [],
+  "sink_rc": 0,
+  "state": "failed",
+  "torn_down": true,
+  "traffic_sha": "a9efe82aff1284690193683e06daf64f87d36f932c2812a66b5aba47f6527ebc",
+  "why": "traffic-not-stored"
+}

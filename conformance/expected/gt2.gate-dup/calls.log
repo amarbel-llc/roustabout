@@ -1,0 +1,7 @@
+juggler new-run as=/@/ argv: spawn --new-run --run-key issue-filer-1760313600123-79c82954 --input <TMP>/<scratch>/request.json --room-domain runs.example.invalid --operator-jid operator@xmpp.example.invalid --issuer issue-filer-test
+list_repos mode=real issues_mode=record
+juggler spawn-agent as=root-uuid-1/root-uuid-1@xmpp.example.invalid//fake/root.pass argv: spawn --brief <TMP>/<scratch>/brief.toml --task <TMP>/<scratch>/task --run-key issue-filer-1760313600123-79c82954 --wait --timeout 150s --user
+madder argv: write -
+juggler decide as=root-uuid-1/root-uuid-1@xmpp.example.invalid//fake/root.pass argv: decide --run-key issue-filer-1760313600123-79c82954 --model jev --room issue-filer-1760313600123-79c82954@runs.example.invalid --parent chat-request-1 --min-confidence 0 --question no-duplicate-of-existing-issue
+issues-commit argv: <TMP>/<scratch>/traffic.frozen.jsonl <TMP>/<scratch>/commit.token
+juggler resolve as=/@/ argv: resolve job-run-1 --state=succeeded --reason=\{\"state\":\"filed\"\,\"run_key\":\"issue-filer-1760313600123-79c82954\"\,\"graph_digest\":\"<graph-digest>\"\,\"issues\":\[\{\"repo\":\"linenisgreat/moxy\"\,\"number\":50\,\"uri\":\"smith://forge.example.invalid/linenisgreat/moxy/issues/50\"\}\]\,\"not_filed\":\[\]\,\"failed_checks\":\[\]\,\"shadow_failed_checks\":\[\]\,\"traffic_blob\":\"madder://blobs/fake-a9efe82aff1284690193683e06daf64f87d36f932c2812a66b5aba47f6527ebc\"\} --fallback-artifacts=\[\{\"tool\":\"issues_create_issue\"\,\"kind\":\"issue\"\,\"uris\":\[\"smith://forge.example.invalid/linenisgreat/moxy/issues/50\"\]\}\]

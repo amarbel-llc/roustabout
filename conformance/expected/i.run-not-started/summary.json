@@ -1,0 +1,16 @@
+{
+  "existing": false,
+  "failed_checks": [],
+  "graph_digest": "<graph-digest>",
+  "issues": [],
+  "min_confidence": 0.5,
+  "not_filed": [],
+  "outcome": "not-started",
+  "reason": "the run could not be started: juggler spawn --new-run exited 1 (juggler: spawn: minting the run root: troupe mint: exit status 1). If the start failed part-way, juggler keeps it and resumes it when the same request is run again",
+  "resolved": false,
+  "room": "",
+  "run_job": "",
+  "run_key": "issue-filer-1760313600123-79c82954",
+  "shadow_failed_checks": [],
+  "why": "run-not-started"
+}

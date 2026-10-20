@@ -1,0 +1,4 @@
+{
+  "outcome": "refused",
+  "reason": "recorded_at must be epoch milliseconds (1..16 digits)"
+}

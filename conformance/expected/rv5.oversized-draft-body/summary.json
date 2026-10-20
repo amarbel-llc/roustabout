@@ -1,0 +1,49 @@
+{
+  "existing": false,
+  "failed_checks": [],
+  "graph_digest": "<graph-digest>",
+  "issues": [
+    {
+      "number": 50,
+      "repo": "linenisgreat/moxy",
+      "uri": "smith://forge.example.invalid/linenisgreat/moxy/issues/50"
+    }
+  ],
+  "ledger": [
+    {
+      "edge": "ok",
+      "kind": "agent",
+      "label": "draft",
+      "node": "<node:draft>",
+      "verdict": "succeeded"
+    },
+    {
+      "edge": "ok",
+      "kind": "decide",
+      "label": "judge",
+      "node": "<node:judge>",
+      "verdict": "ok"
+    },
+    {
+      "edge": "ok",
+      "job": "job-script-1",
+      "kind": "commit",
+      "label": "commit",
+      "node": "<node:commit>",
+      "verdict": "filed"
+    }
+  ],
+  "min_confidence": 0.5,
+  "not_filed": [],
+  "notified": true,
+  "outcome": "success",
+  "resolved": true,
+  "room": "issue-filer-1760313600123-79c82954@runs.example.invalid",
+  "run_job": "job-run-1",
+  "run_key": "issue-filer-1760313600123-79c82954",
+  "shadow_failed_checks": [],
+  "state": "filed",
+  "torn_down": true,
+  "traffic_blob": "madder://blobs/fake-ca3b095750f4cbd2d92252a8f9c6e4553a0efc685e781bf127a32c0d19db9261",
+  "traffic_sha": "ca3b095750f4cbd2d92252a8f9c6e4553a0efc685e781bf127a32c0d19db9261"
+}

@@ -1,0 +1,15 @@
+{
+  "existing": true,
+  "failed_checks": [],
+  "graph_digest": "<graph-digest>",
+  "issues": [],
+  "min_confidence": 0.5,
+  "not_filed": [],
+  "outcome": "existing",
+  "reason": "a run with this key already exists; its result is the terminal record of its run job",
+  "resolved": false,
+  "room": "issue-filer-ce1ba84fb93c505f@runs.example.invalid",
+  "run_job": "job-run-1",
+  "run_key": "issue-filer-ce1ba84fb93c505f",
+  "shadow_failed_checks": []
+}

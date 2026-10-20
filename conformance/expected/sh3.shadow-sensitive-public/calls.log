@@ -1,0 +1,7 @@
+juggler new-run as=/@/ argv: spawn --new-run --run-key issue-filer-1760313600123-79c82954 --input <TMP>/<scratch>/request.json --room-domain runs.example.invalid --operator-jid operator@xmpp.example.invalid --issuer issue-filer-test
+list_repos mode=real issues_mode=record
+juggler spawn-agent as=root-uuid-1/root-uuid-1@xmpp.example.invalid//fake/root.pass argv: spawn --brief <TMP>/<scratch>/brief.toml --task <TMP>/<scratch>/task --run-key issue-filer-1760313600123-79c82954 --wait --timeout 150s --user
+madder argv: write -
+juggler decide as=root-uuid-1/root-uuid-1@xmpp.example.invalid//fake/root.pass argv: decide --run-key issue-filer-1760313600123-79c82954 --model jev --room issue-filer-1760313600123-79c82954@runs.example.invalid --parent chat-request-1 --min-confidence 0 --question explicit-instruction-to-file
+sink
+juggler resolve as=/@/ argv: resolve job-run-1 --state=failed --reason=\{\"state\":\"rejected\"\,\"run_key\":\"issue-filer-1760313600123-79c82954\"\,\"graph_digest\":\"<graph-digest>\"\,\"issues\":\[\]\,\"not_filed\":\[\]\,\"failed_checks\":\[\"no-sensitive-content\"\]\,\"shadow_failed_checks\":\[\]\,\"traffic_blob\":\"madder://blobs/fake-a9efe82aff1284690193683e06daf64f87d36f932c2812a66b5aba47f6527ebc\"\,\"reason\":\"Jev\ did\ not\ pass\ the\ drafts\ \(threshold\ 0.5\):\ no-sensitive-content:\ problem\ at\ 0.8\"\} --fallback-artifacts=\[\]

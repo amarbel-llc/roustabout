@@ -1,0 +1,11 @@
+{
+  "failed_checks": [],
+  "graph_digest": "<graph-digest>",
+  "issues": [],
+  "not_filed": [],
+  "reason": "the traffic file was not stored: madder write exited 1 (madder: write: open store: permission denied); it printed: ",
+  "run_key": "issue-filer-1760313600123-79c82954",
+  "shadow_failed_checks": [],
+  "state": "failed",
+  "traffic_blob": null
+}

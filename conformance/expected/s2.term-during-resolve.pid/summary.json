@@ -1,0 +1,9 @@
+{
+  "existing": false,
+  "outcome": "interrupted",
+  "resolved": true,
+  "run_job": "job-run-1",
+  "run_key": "issue-filer-1760313600123-79c82954",
+  "signal": "TERM",
+  "state": "filed"
+}

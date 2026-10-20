@@ -1,8 +1,9 @@
 # this repo's justfile. Conventions: conformist-justfile(7). `default` is the
 # read-only CI lane, the whole local CI: `just` passing means the flake
 # evaluates, the tree is conformant, the binary builds, the Go tests pass and
-# `roustabout run` matches circus's glue on its scenarios. The last needs a
-# circus checkout (see test-conformance).
+# `roustabout run` does what conformance/expected/ pins on every scenario.
+
+conformance_tools := "nixpkgs#jq nixpkgs#coreutils nixpkgs#gnused nixpkgs#gnugrep nixpkgs#gawk nixpkgs#util-linux nixpkgs#diffutils nixpkgs#findutils"
 
 default: validate lint build test
 
@@ -41,26 +42,19 @@ test-go:
     system=$(nix eval --raw --impure --expr 'builtins.currentSystem')
     nix build ".#checks.${system}.tests" --no-link --print-build-logs
 
-# Builds circus's issue-filer glue against its own stand-ins (circus's
-# infra/hosts/pkgs/issue-filer-glue/test; read-only, nothing in circus is
-# written) and roustabout, runs the glue's scenarios through both and diffs
-# the results (conformance/compare.bash). It needs a circus checkout at HOSTS
-# (default ~/eng/repos/circus/infra/hosts), so a merge here fails when that
-# checkout is missing or its glue is broken. SCENARIOS select by name prefix,
-# e.g. `just test-conformance "" b c e`.
+# Builds the conformance kit (stand-ins and graph documents, conformance/default.nix)
+# and roustabout, runs each scenario through `roustabout run` and diffs what it
+# did against conformance/expected/ (conformance/run.bash). Nothing outside this
+# repo is read. SCENARIOS select by name prefix, e.g. `just test-conformance b c e`.
 #
-# compare roustabout run with circus's glue on the glue's own scenarios
+# compare roustabout run with its pinned expectations on the conformance scenarios
 [group('test')]
-test-conformance hosts=(env('HOME') / "eng/repos/circus/infra/hosts") *scenarios:
+test-conformance *scenarios:
     #!/usr/bin/env bash
     set -euo pipefail
-    glue=$(cd {{ hosts }} && nix build --no-link --print-out-paths --impure --inputs-from . --expr \
-      'let pkgs = (builtins.getFlake "nixpkgs").legacyPackages.${builtins.currentSystem}; in import ./pkgs/issue-filer-glue/test { inherit pkgs; }')
+    kit=$(nix build .#conformance-kit --no-link --print-out-paths)
     rou=$(nix build --no-link --print-out-paths)/bin/roustabout
-    GLUE_NIX={{ hosts }}/pkgs/issue-filer-glue/default.nix \
-      nix shell --inputs-from . nixpkgs#jq nixpkgs#coreutils nixpkgs#gnused nixpkgs#gnugrep nixpkgs#gawk \
-      nixpkgs#util-linux nixpkgs#diffutils nixpkgs#findutils -c \
-      bash conformance/compare.bash "$glue" "$rou" {{ scenarios }}
+    nix shell --inputs-from . {{ conformance_tools }} -c bash conformance/run.bash "$kit" "$rou" {{ scenarios }}
 
 # --- lint ---
 
@@ -102,6 +96,21 @@ lint-worktree:
     conformist check --config-file "$cfg" --tree-root .
 
 # --- codemod ---
+
+codemod: codemod-fmt codemod-conformance-pins
+
+# Rewrites conformance/expected/ from a fresh run of every scenario (SCENARIOS
+# select by name prefix). Read the diff in git before committing it: a pin that
+# moves is a change in what `roustabout run` does.
+#
+# rewrite the conformance expectations from a fresh run
+[group('codemod')]
+codemod-conformance-pins *scenarios:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    kit=$(nix build .#conformance-kit --no-link --print-out-paths)
+    rou=$(nix build --no-link --print-out-paths)/bin/roustabout
+    PIN=1 nix shell --inputs-from . {{ conformance_tools }} -c bash conformance/run.bash "$kit" "$rou" {{ scenarios }}
 
 codemod-fmt: codemod-fmt-tree
 

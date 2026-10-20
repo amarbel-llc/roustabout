@@ -1,0 +1,59 @@
+flag provided but not defined: -no-such-flag
+Usage of run:
+  -agent-backstop-timeout duration
+    	limit on juggler spawn itself (default 5m20s)
+  -agent-timeout duration
+    	how long the drafter is waited for (default 2m30s)
+  -commit-program string
+    	the program the graph's commit node must name; empty skips the check
+  -commit-timeout duration
+    	limit on the commit node (default 2m0s)
+  -grammar string
+    	the grammar document the graph must satisfy (needs --grammar-digest); empty checks none
+  -grammar-digest string
+    	the sha256:<hex> digest the grammar document is pinned by
+  -issuer string
+    	the issuer principal for spawn --new-run; empty leaves it to the ambient identity
+  -issues-moxin string
+    	the issues moxin the drafter is spawned with (required)
+  -judge-model string
+    	the model juggler decide asks (default "jev")
+  -judge-timeout duration
+    	limit on juggler decide (default 1m0s)
+  -juggler string
+    	the juggler program (a clown verb until clown#258) (default "juggler")
+  -list-repos-timeout duration
+    	limit on the repository listing (default 1m0s)
+  -madder string
+    	the madder program (default "madder")
+  -madder-store string
+    	a blob-store-id for madder write; empty is madder's default store
+  -madder-timeout duration
+    	limit on madder write (default 1m0s)
+  -new-run-timeout duration
+    	limit on spawn --new-run (default 2m50s)
+  -no-user-manager
+    	run the drafter without systemd-run --user
+  -operator-jid string
+    	the operator's bare address, a second owner of every run's room (required)
+  -resolve-attempts int
+    	how many times resolve is tried (default 3)
+  -resolve-retry-pause duration
+    	pause between resolve attempts (default 5s)
+  -resolve-timeout duration
+    	limit on each juggler resolve (default 2m0s)
+  -ringmaster string
+    	the ringmaster program; script nodes run as its jobs (empty runs them without one) (default "ringmaster")
+  -room-domain string
+    	the MUC component each run's room is created on (required)
+  -signal-resolve-timeout duration
+    	limit on the one resolve made when a signal stops the run (default 30s)
+  -sink-timeout duration
+    	limit on the sink node (default 1m0s)
+  -troupe string
+    	the troupe program, for the exit wake (default "troupe")
+  -wake-pass-file string
+    	the wake account's password file
+  -wake-user string
+    	the account the exit wake is sent from; empty sends none
+roustabout run: flag provided but not defined: -no-such-flag

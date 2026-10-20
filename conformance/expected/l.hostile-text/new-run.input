@@ -1,0 +1,4 @@
+{
+  "recorded_at": "2025-10-13T00:00:00Z",
+  "text": "-rm -rf \"$(touch /nonexistent/pwned)\" `id` 'single' \\back\nsecond line\n\ttab $HOME\n"
+}

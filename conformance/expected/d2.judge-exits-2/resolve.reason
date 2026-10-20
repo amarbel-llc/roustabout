@@ -1,0 +1,11 @@
+{
+  "failed_checks": [],
+  "graph_digest": "<graph-digest>",
+  "issues": [],
+  "not_filed": [],
+  "reason": "the judge could not be asked: juggler decide exited 2 (endpoint returned status 502: bad gateway)",
+  "run_key": "issue-filer-1760313600123-79c82954",
+  "shadow_failed_checks": [],
+  "state": "failed",
+  "traffic_blob": "madder://blobs/fake-a9efe82aff1284690193683e06daf64f87d36f932c2812a66b5aba47f6527ebc"
+}

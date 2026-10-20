@@ -1,0 +1,38 @@
+{
+  "existing": false,
+  "failed_checks": [],
+  "graph_digest": "<graph-digest>",
+  "issues": [],
+  "ledger": [
+    {
+      "edge": "fail",
+      "kind": "agent",
+      "label": "draft",
+      "node": "<node:draft>",
+      "verdict": "drafter-failed"
+    },
+    {
+      "job": "job-script-1",
+      "kind": "sink",
+      "label": "sink",
+      "node": "<node:sink>",
+      "verdict": "exit 0"
+    }
+  ],
+  "min_confidence": 0.5,
+  "not_filed": [],
+  "notified": true,
+  "outcome": "failure",
+  "reason": "the drafter failed. cannot_complete: no confident repository match for \"the router thing\"; closest: linenisgreat/moxy, linenisgreat/clown",
+  "resolved": true,
+  "room": "issue-filer-1760313600123-79c82954@runs.example.invalid",
+  "run_job": "job-run-1",
+  "run_key": "issue-filer-1760313600123-79c82954",
+  "shadow_failed_checks": [],
+  "sink_rc": 0,
+  "state": "failed",
+  "torn_down": true,
+  "traffic_blob": "madder://blobs/fake-1b06f354216016962f9e1450316a21691834f69c2d2440ca6ad8c9ae6e20bad9",
+  "traffic_sha": "1b06f354216016962f9e1450316a21691834f69c2d2440ca6ad8c9ae6e20bad9",
+  "why": "drafter-failed"
+}

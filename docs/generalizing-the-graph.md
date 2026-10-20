@@ -50,7 +50,8 @@ Already out of the code: the judge's question names are the keys of
 `questions.json`, the modes must cover exactly those keys, and the judge node
 carries an explicit `gate` (one of those keys) that the loader requires and
 roustabout hands to `juggler decide --question`. `just test-conformance` runs
-circus's glue and `roustabout run` on the same scenarios as a regression net.
+`roustabout run` on 72 scenarios against pinned expectations as a regression net
+(pinned from a run that matched circus's glue).
 
 ## The decisions (FDR-0043 18 to 22)
 

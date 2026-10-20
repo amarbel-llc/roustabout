@@ -199,15 +199,15 @@ roustabout, not its owner.
   against the test binary standing in for each program, with flags copied
   from what the circus glue passes (clown 814d90a0). Script nodes (commit,
   sink) run as ringmaster jobs through `ringmaster start` and `done`.
-- `just test-conformance` runs circus's glue and `roustabout run` on the
-  same scenarios and the same stand-ins (circus's `test/fake-*.bash`, built
-  by circus, read in place and never copied) and diffs the exit status, the
-  summary, and everything the stand-ins logged (`conformance/compare.bash`).
-  It reads every setting roustabout is given from the glue script, and checks
-  roustabout's flag defaults against the glue's `default.nix`. Differences it
-  has accepted are in `conformance/known-divergences.tsv`. It needs a circus
-  checkout and is not part of `just`. Stand-ins only: no live juggler, madder,
-  troupe or ringmaster.
+- `just test-conformance` runs 72 scenarios through `roustabout run` against
+  stand-ins for juggler, madder, troupe, the issues moxin, the commit script
+  and the sink, and diffs the exit status, the summary, and everything the
+  stand-ins logged with `conformance/expected/` (`conformance/run.bash`). It is
+  part of `just` and reads nothing outside this repo: the stand-ins, brief,
+  questions and graph builder are frozen copies of circus's, and the
+  expectations were pinned from a run that matched circus's bash glue. See
+  `conformance/README.md`. Stand-ins only: no live juggler, madder, troupe or
+  ringmaster.
 - `roustabout check [--issues-moxin M] [--commit-program P] [--grammar FILE
   --grammar-digest D] GRAPH_DIR` loads a graph document exactly as `run` does,
   against the same host expectations and the pinned grammar, and prints whether

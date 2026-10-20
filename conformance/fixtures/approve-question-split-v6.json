@@ -1,0 +1,50 @@
+{
+  "explicit-instruction-to-file": {
+    "type": "choice",
+    "instructions": "The state is a JSON record of one attempt to file software issues from a spoken request. `request` is the speech-to-text transcription of a short recording (words and names may be misheard). `drafts` are the issues a drafting agent proposed; NOTHING HAS BEEN FILED. `checks` records what the agent looked up. `validation` is what automatic checks found; it may have missed things, so judge from the record itself. Question: is `request` an explicit instruction to file an issue NOW? A reminder to file one later, an intention ('I should file a bug'), a question, a complaint with no instruction, and a ticket with an outside company are all problems.",
+    "criteria": {
+      "ok": "The speaker explicitly instructs that an issue, bug report, ticket or feature request be filed now against a software project, and says what it is about.",
+      "problem": "The request is a reminder or intention to file later, a musing, a question, a complaint without an instruction, or something for an outside company; or it is unclear."
+    }
+  },
+  "one-draft-per-requested-issue": {
+    "type": "choice",
+    "instructions": "The state is a JSON record of one attempt to file software issues from a spoken request. `request` is the speech-to-text transcription of a short recording. `drafts` are the issues a drafting agent proposed; NOTHING HAS BEEN FILED. Judge from `request` and `drafts` only: `checks` and `validation` are not about this question. Question: does `drafts` hold exactly one draft for each issue the request asks for? Count the issues the speaker asks for, not the parts of one issue: one change described with several parts, conditions, steps, options or things to update together is ONE issue and wants ONE draft. The speaker asks for separate issues only by asking for them separately ('two issues', 'one on X and another on Y', 'also file a second one').",
+    "criteria": {
+      "ok": "The number of drafts equals the number of separate issues the speaker asks for, and each requested issue has a draft. A single draft for a single request, however many parts that request has, is ok.",
+      "problem": "There are no drafts, a separately requested issue has no draft, or there is a draft for something the request did not ask for."
+    }
+  },
+  "right-repo-not-a-mirror": {
+    "type": "choice",
+    "instructions": "The state is a JSON record of one attempt to file software issues from a spoken request. `request` is speech-to-text (names may be misheard). `drafts` are the proposed issues; NOTHING HAS BEEN FILED. `checks.repos_available` lists every repository that exists, one per entry. An entry that contains the word 'mirror' is a read-only copy of another repository: issues are NEVER filed there. A draft may also carry `repo_listing`, its own entry from that list. `validation` is automatic and may have missed things; do not rely on it. Question: is each draft's `repo` the project the speaker named or plainly meant, and not a mirror? Work through the drafts one at a time: (1) find the entry in `repos_available` that begins with the draft's `repo` exactly; (2) if that entry contains the word 'mirror', the answer is `problem`, whatever the speaker said; (3) otherwise compare the project name in the draft's `repo` with the project the speaker named or plainly meant.",
+    "criteria": {
+      "ok": "For every draft, the entry in `repos_available` that begins with its `repo` does not contain the word 'mirror', and its project name is the one the speaker named or plainly meant, allowing for misheard or approximate speech.",
+      "problem": "For some draft, the entry in `repos_available` that begins with its `repo` contains the word 'mirror', or the draft is on a different project than the speaker meant."
+    }
+  },
+  "draft-says-what-the-requester-said-and-nothing-else": {
+    "type": "choice",
+    "instructions": "The state is a JSON record of one attempt to file software issues from a spoken request. `request` is speech-to-text. `drafts` are the proposed issues; NOTHING HAS BEEN FILED. Question: do each draft's title and body say what the speaker said about that issue, and nothing else?",
+    "criteria": {
+      "ok": "Each title and body conveys what the speaker said about that issue. A shorter or tidier title, or fixed grammar, is fine.",
+      "problem": "A title or body adds reproduction steps, causes, fixes, opinions or details the speaker did not say, changes the meaning, or includes content from another part of the recording."
+    }
+  },
+  "no-sensitive-content": {
+    "type": "choice",
+    "instructions": "The state is a JSON record of one attempt to file software issues from a spoken request. `drafts` are the proposed issues; NOTHING HAS BEEN FILED, and an issue cannot be taken back. Each draft may carry `repo_listing`, its repository's own entry: an entry that contains '(private)' is a PRIVATE repository, seen only by its owner; any other entry, or no `repo_listing`, is a PUBLIC repository. `validation` is automatic and may have missed things; read the drafts yourself. Question: is every draft free of content it must not carry? There are two kinds. (A) PERSONAL OR SECRET, never allowed in any draft: a password, token, API key or private key; a real person's name; a phone number; an email address; a street address; a location or coordinates; health, financial, legal or family details. (B) INTERNAL INFRASTRUCTURE: IP addresses, internal URLs or service endpoints, internal network names, run keys, account or principal ids. Kind (B) is fine in a draft for a private repository and a problem in a draft for a public one. Machine host names, repository and project names, file and package paths (including /nix/store paths), commit hashes, version numbers, error messages and code are technical identifiers, NOT personal or sensitive: they are fine in every draft.",
+    "criteria": {
+      "ok": "No draft carries anything of kind (A), and no draft for a public repository carries anything of kind (B). Host names, repository names, paths, hashes, versions, error messages and code are fine in any draft.",
+      "problem": "Some draft carries something of kind (A), or a draft for a public repository (its `repo_listing` has no '(private)') carries something of kind (B)."
+    }
+  },
+  "no-duplicate-of-existing-issue": {
+    "type": "choice",
+    "instructions": "The state is a JSON record of one attempt to file software issues from a spoken request. `drafts` are the proposed issues; NOTHING HAS BEEN FILED. `checks.duplicate_searches` lists the searches the agent ran for existing issues, with their results. `validation` is automatic and may have missed things; judge from the record itself. Question: was a duplicate search run for every draft, and is no result a duplicate of a draft? A duplicate is an existing issue that asks for the SAME CHANGE to the same thing as the draft, so that filing the draft would say what that issue already says. Go result by result: read its title, and ask whether it requests the same change as the draft. A result that merely shares the draft's component, tool, feature area or a word in its title, but asks for a different change, a different part, a follow-up, a related fix or a related design, is NOT a duplicate; a project with many issues about one component will show many such results, and they are expected. Searches with no results count as searches.",
+    "criteria": {
+      "ok": "Every draft has at least one duplicate search in its own repository, and no result asks for the same change to the same thing as that draft. Results on the same component or topic that ask for something else are fine, however many there are.",
+      "problem": "A draft has no duplicate search, or some result asks for the same change to the same thing as a draft (the draft would restate an existing issue)."
+    }
+  }
+}

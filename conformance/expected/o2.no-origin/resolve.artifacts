@@ -1,0 +1,9 @@
+[
+  {
+    "kind": "issue",
+    "tool": "issues_create_issue",
+    "uris": [
+      "smith://forge.example.invalid/linenisgreat/moxy/issues/50"
+    ]
+  }
+]

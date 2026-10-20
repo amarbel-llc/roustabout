@@ -1,0 +1,4 @@
+{
+  "outcome": "refused",
+  "reason": "input is not a JSON object with a non-empty text"
+}

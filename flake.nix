@@ -143,6 +143,9 @@
       {
         packages.default = roustabout;
         packages.roustabout = roustabout;
+        # The stand-ins and graph documents conformance/run.bash drives
+        # `roustabout run` with (conformance/default.nix).
+        packages.conformance-kit = import ./conformance { inherit pkgs; };
 
         formatter = eval.config.build.wrapper;
         checks.formatting = eval.config.build.check self;

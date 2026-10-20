@@ -1,0 +1,4 @@
+{
+  "outcome": "refused",
+  "reason": "request_id must be 1..64 characters of [A-Za-z0-9._-]"
+}

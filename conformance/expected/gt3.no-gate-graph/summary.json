@@ -1,0 +1,4 @@
+{
+  "outcome": "refused",
+  "reason": "graph document is not the shape roustabout runs: nodes/<node:judge>.json differs from the node in graph.json"
+}

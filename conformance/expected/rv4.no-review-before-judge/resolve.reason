@@ -1,0 +1,11 @@
+{
+  "failed_checks": [],
+  "graph_digest": "<graph-digest>",
+  "issues": [],
+  "not_filed": [],
+  "reason": "the drafter failed. cannot_complete: no confident repository match for \"the router thing\"; closest: linenisgreat/moxy, linenisgreat/clown",
+  "run_key": "issue-filer-1760313600123-79c82954",
+  "shadow_failed_checks": [],
+  "state": "failed",
+  "traffic_blob": "madder://blobs/fake-1b06f354216016962f9e1450316a21691834f69c2d2440ca6ad8c9ae6e20bad9"
+}

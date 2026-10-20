@@ -1,0 +1,18 @@
+{
+  "failed_checks": [],
+  "graph_digest": "<graph-digest>",
+  "issues": [
+    {
+      "number": 50,
+      "repo": "linenisgreat/moxy",
+      "uri": "smith://forge.example.invalid/linenisgreat/moxy/issues/50"
+    }
+  ],
+  "not_filed": [],
+  "run_key": "issue-filer-1760313600123-79c82954",
+  "shadow_failed_checks": [
+    "draft-says-what-the-requester-said-and-nothing-else"
+  ],
+  "state": "filed",
+  "traffic_blob": "madder://blobs/fake-a9efe82aff1284690193683e06daf64f87d36f932c2812a66b5aba47f6527ebc"
+}

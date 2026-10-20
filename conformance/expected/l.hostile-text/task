@@ -1,0 +1,3 @@
+-rm -rf "$(touch /nonexistent/pwned)" `id` 'single' \back
+second line
+	tab $HOME

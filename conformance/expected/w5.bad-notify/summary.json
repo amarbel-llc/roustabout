@@ -1,0 +1,4 @@
+{
+  "outcome": "refused",
+  "reason": "notify must be a bare JID (local@domain)"
+}

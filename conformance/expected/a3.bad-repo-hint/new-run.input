@@ -1,0 +1,5 @@
+{
+  "recorded_at": "2025-10-13T00:00:00Z",
+  "repo_hint": "moxy; rm -rf /",
+  "text": "file an issue on moxy that the restart tool should reconnect automatically"
+}

@@ -1,0 +1,4 @@
+{
+  "outcome": "refused",
+  "reason": "graph document is not the shape roustabout runs: edges are not draft-ok->judge, judge-ok->commit and each of draft, judge, commit -fail->sink"
+}

@@ -1,0 +1,37 @@
+{
+  "existing": false,
+  "failed_checks": [],
+  "graph_digest": "<graph-digest>",
+  "issues": [],
+  "ledger": [
+    {
+      "edge": "fail",
+      "kind": "agent",
+      "label": "draft",
+      "node": "<node:draft>",
+      "verdict": "repo-list-failed"
+    },
+    {
+      "job": "job-script-1",
+      "kind": "sink",
+      "label": "sink",
+      "node": "<node:sink>",
+      "verdict": "exit 0"
+    }
+  ],
+  "min_confidence": 0.5,
+  "not_filed": [],
+  "outcome": "failure",
+  "reason": "the repository list could not be read: list_repos: the cutting-garden origin did not answer; nothing was written",
+  "resolved": true,
+  "room": "issue-filer-1760313600123-79c82954@runs.example.invalid",
+  "run_job": "job-run-1",
+  "run_key": "issue-filer-1760313600123-79c82954",
+  "shadow_failed_checks": [],
+  "sink_rc": 0,
+  "state": "failed",
+  "torn_down": true,
+  "traffic_blob": "madder://blobs/fake-e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "traffic_sha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "why": "repo-list-failed"
+}
