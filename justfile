@@ -1,8 +1,22 @@
 # this repo's justfile. Conventions: conformist-justfile(7). `default` is the
-# read-only CI lane; `just` passing means the tree is conformant. Go only
-# (FDR-0043): no graph runtime yet, just the `roustabout version` scaffold.
+# read-only CI lane, the whole local CI: `just` passing means the flake
+# evaluates, the tree is conformant, the binary builds, the Go tests pass and
+# `roustabout run` matches circus's glue on its scenarios. The last needs a
+# circus checkout (see test-conformance).
 
-default: build test
+default: validate lint build test
+
+# --- validate ---
+
+validate: validate-nix
+
+# `nix flake check` evaluates every flake output and builds every check
+# (formatting, tests, layout).
+#
+# run nix flake check
+[group('validate')]
+validate-nix:
+    nix flake check
 
 # --- build ---
 
@@ -17,7 +31,7 @@ build-go:
 
 # --- test ---
 
-test: test-go
+test: test-go test-conformance
 
 # run the Go test suite via godyn's per-package test lane
 [group('test')]
@@ -27,13 +41,13 @@ test-go:
     system=$(nix eval --raw --impure --expr 'builtins.currentSystem')
     nix build ".#checks.${system}.tests" --no-link --print-build-logs
 
-test-external: test-conformance
-
 # Builds circus's issue-filer glue against its own stand-ins (circus's
 # infra/hosts/pkgs/issue-filer-glue/test; read-only, nothing in circus is
 # written) and roustabout, runs the glue's scenarios through both and diffs
-# the results (conformance/compare.bash). Not part of `just`: it needs a circus
-# checkout. SCENARIOS select by name prefix, e.g. `just test-conformance "" b c e`.
+# the results (conformance/compare.bash). It needs a circus checkout at HOSTS
+# (default ~/eng/repos/circus/infra/hosts), so a merge here fails when that
+# checkout is missing or its glue is broken. SCENARIOS select by name prefix,
+# e.g. `just test-conformance "" b c e`.
 #
 # compare roustabout run with circus's glue on the glue's own scenarios
 [group('test')]
@@ -50,7 +64,7 @@ test-conformance hosts=(env('HOME') / "eng/repos/circus/infra/hosts") *scenarios
 
 # --- lint ---
 
-lint: lint-fmt lint-layout
+lint: lint-fmt lint-layout lint-impure
 
 # internal/<level>/<leaf> must sit at the NATO level dagnabit computes from its
 # imports (checks.layout). On failure the log names each package and the level
