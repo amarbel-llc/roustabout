@@ -186,9 +186,12 @@ roustabout, not its owner.
 **Status:** a Go module on purse-first's go-mcp `command` framework.
 
 - Built and tested against fakes of every port, following the glue's
-  `test/scenarios.bash`: the graph document loader (`internal/0/graph`, one
-  shape, digests checked, an optional `runtime` object naming the juggler,
-  moxy and glue store paths so the digest covers them, circus#314); the
+  `test/scenarios.bash`: the graph document loader (`internal/0/graph`: digests
+  checked, node kinds and their outcomes from a table in Go, every edge checked
+  against the source node's outcomes, an optional `entry`, a required `result`
+  section, a grammar the host pins by digest, an optional `runtime` object
+  naming the juggler, moxy and glue store paths so the digest covers them,
+  circus#314; see `docs/generalizing-the-graph.md`); the
   request parser and run key (`internal/0/request`); the result record, judge
   verdicts, reasons, summary and exit codes (`internal/alfa/runrecord`); the
   interpreter (`internal/bravo/run`): start, draft, freeze, store, judge, commit,
@@ -221,10 +224,17 @@ roustabout, not its owner.
   environment, for the provenance footer circus#314 asks the commit script to
   write. The commit script is circus's; the variable names are roustabout's
   choice and circus has to read them.
-- Not done: the shadow run against the glue on krone; the footer in the
-  commit script; deployment; the graph node (a graph calling a graph);
-  per-node narrowing, signing and grants (blocked on moxy FDR 0013 and
-  spinclass FDR 0032).
+- Deployment: circus reports roustabout running on krone (29e2d0ae, with
+  circus 62830092). This repo has not checked that, and nothing here has run
+  against a live juggler, madder, troupe or ringmaster. A scriptable agent for
+  juggler, which would let these scenarios run against a real one, is
+  linenisgreat/clown#270.
+- Not done: the `switch` node, the `*case` wildcard and `gates` beyond
+  `"none"` (waiting on circus's schema for `switch`); the graph node (a graph
+  calling a graph); cycles with a bound; per-node narrowing, signing and
+  grants (blocked on moxy FDR 0013 and spinclass FDR 0032). Whether the shadow
+  run against the glue on krone has happened, and whether the commit script
+  writes the provenance footer, are circus's to say; this repo does not know.
 
 **Open questions** (FDR-0043, verbatim, minus "language and framework": this
 scaffold settles that one as Go on purse-first's go-mcp):
