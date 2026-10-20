@@ -27,6 +27,8 @@ test-go:
     system=$(nix eval --raw --impure --expr 'builtins.currentSystem')
     nix build ".#checks.${system}.tests" --no-link --print-build-logs
 
+test-external: test-conformance
+
 # Builds circus's issue-filer glue against its own stand-ins (circus's
 # infra/hosts/pkgs/issue-filer-glue/test; read-only, nothing in circus is
 # written) and roustabout, runs the glue's scenarios through both and diffs
