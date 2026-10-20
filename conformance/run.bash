@@ -339,6 +339,13 @@ sc sh1.shadow-duplicate draft-ok,judge-dup "$(inp "$plain")" shadow
 sc sh2.shadow-faithful draft-ok,judge-faithful "$(inp "$plain")" shadow
 sc sh4.shadow-sensitive-private draft-private,judge-clean "$(inp "$plain")" shadow
 sc sh7.enforce-duplicate draft-ok,judge-dup "$(inp "$plain")"
+# The pass rule: the lenient graph is the shadow graph with pass_rule
+# no-confident-problem. An uncertain problem on enforce-public clean and on
+# shadow faithful files with nothing recorded; a confident problem on clean
+# still rejects; the same uncertain answers reject under the default rule.
+sc pr1.lenient-unsure-files draft-ok,judge-unsure "$(inp "$plain")" lenient
+sc pr2.lenient-confident-problem-rejects draft-ok,judge-clean "$(inp "$plain")" lenient
+sc pr3.default-rule-unsure-rejects draft-ok,judge-unsure "$(inp "$plain")" shadow
 
 # ---- the report -------------------------------------------------------------
 

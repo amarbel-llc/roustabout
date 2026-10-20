@@ -1,6 +1,6 @@
 # conformance
 
-`just test-conformance` runs 72 scenarios through `roustabout run` and compares
+`just test-conformance` runs 75 scenarios through `roustabout run` and compares
 what each did with `expected/<scenario>/<artifact>`. `just codemod` re-pins
 (`PIN=1`); read the diff in git before committing one, because a pin that moves
 is a change in what `roustabout run` does.
@@ -11,8 +11,9 @@ no model, no network, and nothing outside this repo.
 ## Layout
 
 - `run.bash` the scenarios and the comparison.
-- `default.nix` builds the kit: the stand-ins, the graph documents (six
-  variants: default, no-sink, shadow, gate-dup, no-gate, bad-graph) and
+- `default.nix` builds the kit: the stand-ins, the graph documents (seven
+  variants: default, no-sink, shadow, gate-dup, lenient, no-gate, bad-graph;
+  lenient is shadow with `pass_rule` `no-confident-problem`) and
   `settings.env`. `nix build .#conformance-kit`.
 - `standins/` doubles of the juggler, madder and troupe CLIs, the issues moxin's
   `list_repos`, the commit script and the sink, and of ringmaster. Each logs
@@ -37,6 +38,11 @@ circus's glue-test graphs once node ids and store paths are normalised, and the
 brief and questions are byte-identical. They do not follow circus: when circus
 changes the issue-filer graph or its stand-ins, refresh the copies on purpose,
 re-pin, and read the diff.
+
+One change runs ahead of circus: `fixtures/issue-filer-graph.nix` takes a
+`passRule` argument (the judge node's `pass_rule`), and the `lenient` variant,
+the `judge-unsure` knob of `fake-juggler.bash` and the `pr*` scenarios use it.
+They were pinned from `roustabout run` alone; no glue run checked them.
 
 ## Where the pins come from
 

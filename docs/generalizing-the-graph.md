@@ -79,7 +79,8 @@ roustabout hands to `juggler decide --question`. `just test-conformance` runs
   whose cases are node digests is a Merkle subtree, as the `graph` node is.
 - **20. The judge is one `decide` brick.** Its questions, their modes and its gate
   are internal; it is one juggler call, with the threshold applied per question
-  by the interpreter. The modes read the draft's repository listing, which is
+  by the interpreter under the node's `pass_rule` (README, "The graph document
+  it accepts"). The modes read the draft's repository listing, which is
   whole-run state, so they are not independent legs. `all`, `any` and `not`
   compose whole bricks, never the questions inside a `decide`. How `decide`
   behaves across several questions with one gate is juggler's to state (clown);

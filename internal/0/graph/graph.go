@@ -32,6 +32,15 @@ const (
 	ModeShadow        = "shadow"
 	ModeEnforcePublic = "enforce-public"
 
+	// PassConfidentOK is the judge's default pass rule: a question passes only
+	// when answered ok at or above min_confidence, so an uncertain answer
+	// fails either way.
+	PassConfidentOK = "confident-ok"
+	// PassNoConfidentProblem fails a question only when it is answered problem
+	// at or above min_confidence (or the answer is missing or malformed), so an
+	// uncertain answer passes either way.
+	PassNoConfidentProblem = "no-confident-problem"
+
 	// NoSinkProgram is the sink node's program when the graph has no sink
 	// program: the tracer bullet's no-op sink.
 	NoSinkProgram = "none"
@@ -49,9 +58,12 @@ type Node struct {
 	Moxin string `json:"moxin,omitempty"`
 
 	// decide
-	Questions     string            `json:"questions,omitempty"`
-	MinConfidence *float64          `json:"min_confidence,omitempty"`
-	Modes         map[string]string `json:"modes,omitempty"`
+	Questions     string   `json:"questions,omitempty"`
+	MinConfidence *float64 `json:"min_confidence,omitempty"`
+	// PassRule is PassConfidentOK or PassNoConfidentProblem; absent is
+	// PassConfidentOK, so documents that predate it judge as they did.
+	PassRule *string           `json:"pass_rule,omitempty"`
+	Modes    map[string]string `json:"modes,omitempty"`
 	// Gate names the question handed to `juggler decide --question`. It must
 	// be one of the questions.json keys; nothing is inferred when it is absent.
 	Gate string `json:"gate,omitempty"`
@@ -180,6 +192,15 @@ func (g *Graph) Sink() Node   { return g.Nodes[g.SinkID] }
 
 // Threshold is the judge's per-question confidence threshold.
 func (g *Graph) Threshold() float64 { return *g.Judge().MinConfidence }
+
+// PassRule is the judge's pass rule; a judge without one reads as
+// PassConfidentOK.
+func (g *Graph) PassRule() string {
+	if r := g.Judge().PassRule; r != nil {
+		return *r
+	}
+	return PassConfidentOK
+}
 
 // QuestionModes returns the judge's mode per question. A graph without modes
 // reads as all enforce, so older documents keep working.
@@ -339,6 +360,9 @@ func (g *Graph) validateShape(expect Expect, entry string) error {
 	}
 	if judge.MinConfidence == nil || *judge.MinConfidence < 0 {
 		return refuse("judge node needs a non-negative numeric min_confidence")
+	}
+	if r := judge.PassRule; r != nil && *r != PassConfidentOK && *r != PassNoConfidentProblem {
+		return refuse("judge node pass_rule %q is not %s | %s", *r, PassConfidentOK, PassNoConfidentProblem)
 	}
 	if commit.Program == "" {
 		return refuse("commit node needs a program")

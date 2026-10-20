@@ -39,6 +39,12 @@
   # Per-question confidence threshold the judge node carries, as a decimal
   # string; the glue reads it from the graph.
   minConfidence ? "0.5",
+  # The judge's pass rule (roustabout graph.go PassRule): "confident-ok" (a
+  # question passes only when answered ok at or above minConfidence) or
+  # "no-confident-problem" (it fails only when answered problem at or above
+  # minConfidence, or the answer is missing or malformed). null leaves the node
+  # without the field, which reads as confident-ok.
+  passRule ? null,
   # The question the judge hands to `juggler decide --question` (FDR-0043
   # decision 15). It must be one of the question file's keys. roustabout
   # 0f35d3ab refuses a judge node without one; null leaves the node without a
@@ -97,7 +103,8 @@ let
       min_confidence = builtins.fromJSON minConfidence;
       inherit modes;
     }
-    // pkgs.lib.optionalAttrs (gate != null) { inherit gate; };
+    // pkgs.lib.optionalAttrs (gate != null) { inherit gate; }
+    // pkgs.lib.optionalAttrs (passRule != null) { pass_rule = passRule; };
     # commit and sink were one kind, `script`, until FDR-0043 decision 21
     # (2026-10-19): a grammar over kinds could not tell the node that is
     # conferred the write token from the node that must never get it. The
@@ -207,6 +214,14 @@ then
   throw "issue-filer-graph: runtime must name exactly juggler, moxy and glue"
 else if !modesOk then
   throw "issue-filer-graph: questionModes must name exactly the question names (${concatStringsSep ", " questionNames}), each enforce | shadow | enforce-public"
+else if
+  !builtins.elem passRule [
+    null
+    "confident-ok"
+    "no-confident-problem"
+  ]
+then
+  throw "issue-filer-graph: passRule must be null, \"confident-ok\" or \"no-confident-problem\", got \"${toString passRule}\""
 else if !gateOk then
   throw "issue-filer-graph: gate must be one of the question names (${concatStringsSep ", " questionNames}), got \"${toString gate}\""
 else if builtins.match "[0-9]+(\\.[0-9]+)?" minConfidence == null then

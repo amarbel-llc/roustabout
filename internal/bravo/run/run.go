@@ -651,14 +651,14 @@ func (e *execution) judge(ctx context.Context) (rr.Ending, bool) {
 		return failedJudge("the judge's answer could not be read: juggler decide exited 0 but printed no answers object")
 	}
 
-	threshold := g.Threshold()
-	verdict := rr.Judge(g.Questions, answers, threshold, g.QuestionModes(), rr.AnyPublic(st.RepoListings()))
+	threshold, rule := g.Threshold(), g.PassRule()
+	verdict := rr.Judge(g.Questions, answers, threshold, rule, g.QuestionModes(), rr.AnyPublic(st.RepoListings()))
 	e.failed, e.shadow = verdict.Failed, verdict.ShadowFailed
 	if len(verdict.ShadowFailed) > 0 {
 		e.log("Jev would have rejected on %s (shadow; not enforced)", strings.Join(verdict.ShadowFailed, ", "))
 	}
 	if len(verdict.Failed) > 0 {
-		return rr.Ending{Why: rr.WhyJudgeRejected, Reason: rr.RejectionReason(verdict.Failed, answers, threshold)}, false
+		return rr.Ending{Why: rr.WhyJudgeRejected, Reason: rr.RejectionReason(verdict.Failed, answers, threshold, rule)}, false
 	}
 	return rr.Ending{}, true
 }

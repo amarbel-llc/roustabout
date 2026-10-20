@@ -122,6 +122,9 @@ func TestLoadValid(t *testing.T) {
 	if g.Threshold() != 0.5 {
 		t.Fatalf("threshold %v", g.Threshold())
 	}
+	if g.PassRule() != PassConfidentOK {
+		t.Fatalf("a judge without pass_rule reads as %q, want %q", g.PassRule(), PassConfidentOK)
+	}
 	if g.HasSinkProgram() {
 		t.Fatal("sink program is none")
 	}
@@ -338,6 +341,8 @@ func TestLoadRefusals(t *testing.T) {
 		}, Expect{}, "only the fields"},
 		{"no threshold", func(f *fixture) { delete(f.nodes["judge"], "min_confidence") }, Expect{}, "min_confidence"},
 		{"string threshold", func(f *fixture) { f.nodes["judge"]["min_confidence"] = "0.5" }, Expect{}, "min_confidence"},
+		{"unknown pass rule", func(f *fixture) { f.nodes["judge"]["pass_rule"] = "lenient" }, Expect{}, "pass_rule"},
+		{"empty pass rule", func(f *fixture) { f.nodes["judge"]["pass_rule"] = "" }, Expect{}, "pass_rule"},
 		{"bad mode", func(f *fixture) {
 			f.nodes["judge"]["modes"] = map[string]string{"request": "maybe", "complete": "enforce", "repo": "enforce", "faithful": "enforce", "clean": "enforce", "dup": "enforce"}
 		}, Expect{}, "mode"},
@@ -372,6 +377,20 @@ func TestLoadRefusals(t *testing.T) {
 				t.Fatalf("error %q lacks %q", err, tc.want)
 			}
 		})
+	}
+}
+
+func TestLoadReadsThePassRule(t *testing.T) {
+	for _, rule := range []string{PassConfidentOK, PassNoConfidentProblem} {
+		f := newFixture()
+		f.nodes["judge"]["pass_rule"] = rule
+		g, err := Load(f.fs(t), Expect{})
+		if err != nil {
+			t.Fatalf("%s: %v", rule, err)
+		}
+		if g.PassRule() != rule {
+			t.Fatalf("pass rule %q, want %q", g.PassRule(), rule)
+		}
 	}
 }
 

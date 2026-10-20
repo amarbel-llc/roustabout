@@ -343,18 +343,15 @@ type Verdict struct {
 	ShadowFailed []string
 }
 
-// Judge applies the threshold per question. A question passes when it is
-// answered `ok` with a confidence at or above the threshold; a missing answer,
-// a missing confidence (counted as 0) and a non-ok choice fail it. A failed
-// question is enforced or shadow by its mode; enforce-public enforces only
-// when anyPublic. Questions are taken in sorted order.
-func Judge(questions []string, answers map[string]Answer, threshold float64, modes map[string]string, anyPublic bool) Verdict {
+// Judge applies the pass rule and threshold per question. A failed question is
+// enforced or shadow by its mode; enforce-public enforces only when anyPublic.
+// Questions are taken in sorted order.
+func Judge(questions []string, answers map[string]Answer, threshold float64, rule string, modes map[string]string, anyPublic bool) Verdict {
 	sorted := append([]string(nil), questions...)
 	sort.Strings(sorted)
 	v := Verdict{Failed: []string{}, ShadowFailed: []string{}}
 	for _, q := range sorted {
-		a, ok := answers[q]
-		if ok && a.Present && a.HasChoice && a.Choice == "ok" && a.Confidence >= threshold {
+		if passes(answers[q], threshold, rule) {
 			continue
 		}
 		mode := modes[q]
@@ -365,6 +362,31 @@ func Judge(questions []string, answers map[string]Answer, threshold float64, mod
 		}
 	}
 	return v
+}
+
+// passes measures one answer. Under PassNoConfidentProblem a question fails
+// only when it is answered `problem` at or above the threshold, or the answer
+// is missing or malformed (no choice, no confidence, or a choice that is
+// neither ok nor problem). Under PassConfidentOK, the default, it passes only
+// when answered `ok` at or above the threshold, a missing confidence counting
+// as 0.
+func passes(a Answer, threshold float64, rule string) bool {
+	if !a.Present || !a.HasChoice {
+		return false
+	}
+	if rule != graph.PassNoConfidentProblem {
+		return a.Choice == "ok" && a.Confidence >= threshold
+	}
+	if !a.HasConf {
+		return false
+	}
+	switch a.Choice {
+	case "ok":
+		return true
+	case "problem":
+		return a.Confidence < threshold
+	}
+	return false
 }
 
 // AnyPublic reports whether any draft targets a repository whose listing is
@@ -380,9 +402,10 @@ func AnyPublic(repoListings []string) bool {
 
 func formatNumber(f float64) string { return strconv.FormatFloat(f, 'g', -1, 64) }
 
-// RejectionReason is the reason when the judge rejected: the threshold and, per
-// failed question, its choice and confidence.
-func RejectionReason(failed []string, answers map[string]Answer, threshold float64) string {
+// RejectionReason is the reason when the judge rejected: the threshold, the
+// pass rule when it is not the default and, per failed question, its choice
+// and confidence.
+func RejectionReason(failed []string, answers map[string]Answer, threshold float64, rule string) string {
 	parts := make([]string, 0, len(failed))
 	for _, q := range failed {
 		a := answers[q]
@@ -396,7 +419,11 @@ func RejectionReason(failed []string, answers map[string]Answer, threshold float
 		parts = append(parts, fmt.Sprintf("%s: %s at %s", q, choice, conf))
 	}
 	detail := truncate(strings.Join(parts, "; "), 1000)
-	return fmt.Sprintf("Jev did not pass the drafts (threshold %s): %s", formatNumber(threshold), detail)
+	measure := "threshold " + formatNumber(threshold)
+	if rule != "" && rule != graph.PassConfidentOK {
+		measure += ", pass_rule " + rule
+	}
+	return fmt.Sprintf("Jev did not pass the drafts (%s): %s", measure, detail)
 }
 
 func truncate(s string, n int) string {

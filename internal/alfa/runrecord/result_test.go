@@ -43,7 +43,7 @@ func answersJSON(t *testing.T, over map[string]string) map[string]Answer {
 }
 
 func TestJudgeAllOk(t *testing.T) {
-	v := Judge(questionNames, answersJSON(t, nil), 0.5, allEnforce(), true)
+	v := Judge(questionNames, answersJSON(t, nil), 0.5, graph.PassConfidentOK, allEnforce(), true)
 	if len(v.Failed) != 0 || len(v.ShadowFailed) != 0 {
 		t.Fatalf("%+v", v)
 	}
@@ -52,11 +52,11 @@ func TestJudgeAllOk(t *testing.T) {
 // scenario c: Jev finds a duplicate.
 func TestJudgeDuplicateRejects(t *testing.T) {
 	a := answersJSON(t, map[string]string{"dup": `{"choice":"problem","confidence":0.8}`})
-	v := Judge(questionNames, a, 0.5, allEnforce(), true)
+	v := Judge(questionNames, a, 0.5, graph.PassConfidentOK, allEnforce(), true)
 	if !reflect.DeepEqual(v.Failed, []string{"dup"}) {
 		t.Fatalf("%+v", v)
 	}
-	if got := RejectionReason(v.Failed, a, 0.5); !strings.Contains(got, "dup: problem at 0.8") || !strings.Contains(got, "threshold 0.5") {
+	if got := RejectionReason(v.Failed, a, 0.5, graph.PassConfidentOK); !strings.Contains(got, "dup: problem at 0.8") || !strings.Contains(got, "threshold 0.5") {
 		t.Fatalf("reason %q", got)
 	}
 }
@@ -64,18 +64,18 @@ func TestJudgeDuplicateRejects(t *testing.T) {
 // scenario d: ok on every question, but request is below the threshold.
 func TestJudgeBelowThreshold(t *testing.T) {
 	a := answersJSON(t, map[string]string{"request": `{"choice":"ok","confidence":0.4}`})
-	v := Judge(questionNames, a, 0.5, allEnforce(), true)
+	v := Judge(questionNames, a, 0.5, graph.PassConfidentOK, allEnforce(), true)
 	if !reflect.DeepEqual(v.Failed, []string{"request"}) {
 		t.Fatalf("%+v", v)
 	}
-	if got := RejectionReason(v.Failed, a, 0.5); !strings.Contains(got, "request") || !strings.Contains(got, "0.4") {
+	if got := RejectionReason(v.Failed, a, 0.5, graph.PassConfidentOK); !strings.Contains(got, "request") || !strings.Contains(got, "0.4") {
 		t.Fatalf("reason %q", got)
 	}
 }
 
 func TestJudgeConfidenceEqualToThresholdPasses(t *testing.T) {
 	a := answersJSON(t, map[string]string{"request": `{"choice":"ok","confidence":0.5}`})
-	if v := Judge(questionNames, a, 0.5, allEnforce(), true); len(v.Failed) != 0 {
+	if v := Judge(questionNames, a, 0.5, graph.PassConfidentOK, allEnforce(), true); len(v.Failed) != 0 {
 		t.Fatalf("%+v", v)
 	}
 }
@@ -83,28 +83,28 @@ func TestJudgeConfidenceEqualToThresholdPasses(t *testing.T) {
 // scenario d3: five of six answered.
 func TestJudgeMissingAnswerFails(t *testing.T) {
 	a := answersJSON(t, map[string]string{"dup": ""})
-	v := Judge(questionNames, a, 0.5, allEnforce(), true)
+	v := Judge(questionNames, a, 0.5, graph.PassConfidentOK, allEnforce(), true)
 	if !reflect.DeepEqual(v.Failed, []string{"dup"}) {
 		t.Fatalf("%+v", v)
 	}
-	if got := RejectionReason(v.Failed, a, 0.5); !strings.Contains(got, "dup: no answer at no confidence") {
+	if got := RejectionReason(v.Failed, a, 0.5, graph.PassConfidentOK); !strings.Contains(got, "dup: no answer at no confidence") {
 		t.Fatalf("reason %q", got)
 	}
 }
 
 func TestJudgeMissingConfidenceCountsAsZero(t *testing.T) {
 	a := answersJSON(t, map[string]string{"repo": `{"choice":"ok"}`})
-	if v := Judge(questionNames, a, 0.5, allEnforce(), true); !reflect.DeepEqual(v.Failed, []string{"repo"}) {
+	if v := Judge(questionNames, a, 0.5, graph.PassConfidentOK, allEnforce(), true); !reflect.DeepEqual(v.Failed, []string{"repo"}) {
 		t.Fatalf("%+v", v)
 	}
-	if v := Judge(questionNames, a, 0, allEnforce(), true); len(v.Failed) != 0 {
+	if v := Judge(questionNames, a, 0, graph.PassConfidentOK, allEnforce(), true); len(v.Failed) != 0 {
 		t.Fatalf("threshold 0 should pass: %+v", v)
 	}
 }
 
 func TestJudgeNonObjectAnswerFails(t *testing.T) {
 	a := answersJSON(t, map[string]string{"clean": `"ok"`})
-	if v := Judge(questionNames, a, 0.5, allEnforce(), true); !reflect.DeepEqual(v.Failed, []string{"clean"}) {
+	if v := Judge(questionNames, a, 0.5, graph.PassConfidentOK, allEnforce(), true); !reflect.DeepEqual(v.Failed, []string{"clean"}) {
 		t.Fatalf("%+v", v)
 	}
 }
@@ -114,9 +114,78 @@ func TestJudgeFailedChecksAreSorted(t *testing.T) {
 		"request": `{"choice":"no","confidence":1}`,
 		"clean":   `{"choice":"no","confidence":1}`,
 	})
-	v := Judge([]string{"request", "clean", "dup"}, a, 0.5, allEnforce(), true)
+	v := Judge([]string{"request", "clean", "dup"}, a, 0.5, graph.PassConfidentOK, allEnforce(), true)
 	if !reflect.DeepEqual(v.Failed, []string{"clean", "request"}) {
 		t.Fatalf("%+v", v)
+	}
+}
+
+// TestJudgePassRules measures one answer to "clean" (enforce) and one to
+// "faithful" (shadow) under each pass rule at threshold 0.5. A nil answer
+// drops it; everything else is ok at 0.9.
+func TestJudgePassRules(t *testing.T) {
+	const (
+		oldRule = graph.PassConfidentOK
+		newRule = graph.PassNoConfidentProblem
+	)
+	modes := map[string]string{
+		"request": "enforce", "complete": "enforce", "repo": "enforce",
+		"faithful": "shadow", "clean": "enforce", "dup": "enforce",
+	}
+	cases := []struct {
+		name   string
+		rule   string
+		q      string
+		answer string
+		fails  bool
+	}{
+		{"uncertain problem passes", newRule, "clean", `{"choice":"problem","confidence":0.02}`, false},
+		{"problem just below the threshold passes", newRule, "clean", `{"choice":"problem","confidence":0.49}`, false},
+		{"problem at the threshold fails", newRule, "clean", `{"choice":"problem","confidence":0.5}`, true},
+		{"confident problem fails", newRule, "clean", `{"choice":"problem","confidence":0.9}`, true},
+		{"uncertain ok passes", newRule, "clean", `{"choice":"ok","confidence":0.02}`, false},
+		{"confident ok passes", newRule, "clean", `{"choice":"ok","confidence":0.9}`, false},
+		{"no answer fails", newRule, "clean", "", true},
+		{"no choice fails", newRule, "clean", `{"confidence":0.9}`, true},
+		{"a choice that is not a string fails", newRule, "clean", `{"choice":1,"confidence":0.9}`, true},
+		{"no confidence fails", newRule, "clean", `{"choice":"ok"}`, true},
+		{"a confidence that is not a number fails", newRule, "clean", `{"choice":"ok","confidence":"high"}`, true},
+		{"another choice fails", newRule, "clean", `{"choice":"maybe","confidence":0.9}`, true},
+		{"an answer that is not an object fails", newRule, "clean", `"ok"`, true},
+		{"uncertain shadow problem is not a shadow failure", newRule, "faithful", `{"choice":"problem","confidence":0.3}`, false},
+		{"confident shadow problem is a shadow failure", newRule, "faithful", `{"choice":"problem","confidence":0.76}`, true},
+
+		{"old: uncertain problem fails", oldRule, "clean", `{"choice":"problem","confidence":0.02}`, true},
+		{"old: uncertain ok fails", oldRule, "clean", `{"choice":"ok","confidence":0.02}`, true},
+		{"old: confident ok passes", oldRule, "clean", `{"choice":"ok","confidence":0.9}`, false},
+		{"old: no confidence fails", oldRule, "clean", `{"choice":"ok"}`, true},
+		{"old: uncertain shadow problem is a shadow failure", oldRule, "faithful", `{"choice":"problem","confidence":0.3}`, true},
+		{"absent rule is the old rule", "", "clean", `{"choice":"problem","confidence":0.02}`, true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			a := answersJSON(t, map[string]string{c.q: c.answer})
+			v := Judge(questionNames, a, 0.5, c.rule, modes, true)
+			want, wantShadow := []string{}, []string{}
+			if c.fails && modes[c.q] == "shadow" {
+				wantShadow = []string{c.q}
+			} else if c.fails {
+				want = []string{c.q}
+			}
+			if !reflect.DeepEqual(v.Failed, want) || !reflect.DeepEqual(v.ShadowFailed, wantShadow) {
+				t.Fatalf("got %+v, want failed %v shadow %v", v, want, wantShadow)
+			}
+		})
+	}
+}
+
+func TestRejectionReasonNamesANonDefaultRule(t *testing.T) {
+	a := answersJSON(t, map[string]string{"clean": `{"choice":"problem","confidence":0.9}`})
+	if got := RejectionReason([]string{"clean"}, a, 0.5, graph.PassConfidentOK); got != "Jev did not pass the drafts (threshold 0.5): clean: problem at 0.9" {
+		t.Fatalf("default rule: %q", got)
+	}
+	if got := RejectionReason([]string{"clean"}, a, 0.5, graph.PassNoConfidentProblem); got != "Jev did not pass the drafts (threshold 0.5, pass_rule no-confident-problem): clean: problem at 0.9" {
+		t.Fatalf("new rule: %q", got)
 	}
 }
 
@@ -142,7 +211,7 @@ func TestShadowQuestionsAreRecordedNotRejecting(t *testing.T) {
 		"dup":      `{"choice":"problem","confidence":0.8}`,
 		"faithful": `{"choice":"ok","confidence":0.2}`,
 	})
-	v := Judge(questionNames, a, 0.5, shadowModes(), true)
+	v := Judge(questionNames, a, 0.5, graph.PassConfidentOK, shadowModes(), true)
 	if len(v.Failed) != 0 || !reflect.DeepEqual(v.ShadowFailed, []string{"dup", "faithful"}) {
 		t.Fatalf("%+v", v)
 	}
@@ -151,11 +220,11 @@ func TestShadowQuestionsAreRecordedNotRejecting(t *testing.T) {
 // sh3, sh4: clean is enforce-public.
 func TestEnforcePublicDependsOnTheDrafts(t *testing.T) {
 	a := answersJSON(t, map[string]string{"clean": `{"choice":"problem","confidence":0.9}`})
-	public := Judge(questionNames, a, 0.5, shadowModes(), AnyPublic([]string{"linenisgreat/moxy"}))
+	public := Judge(questionNames, a, 0.5, graph.PassConfidentOK, shadowModes(), AnyPublic([]string{"linenisgreat/moxy"}))
 	if !reflect.DeepEqual(public.Failed, []string{"clean"}) || len(public.ShadowFailed) != 0 {
 		t.Fatalf("public: %+v", public)
 	}
-	private := Judge(questionNames, a, 0.5, shadowModes(), AnyPublic([]string{"friedenberg/dotfiles (private)"}))
+	private := Judge(questionNames, a, 0.5, graph.PassConfidentOK, shadowModes(), AnyPublic([]string{"friedenberg/dotfiles (private)"}))
 	if len(private.Failed) != 0 || !reflect.DeepEqual(private.ShadowFailed, []string{"clean"}) {
 		t.Fatalf("private: %+v", private)
 	}

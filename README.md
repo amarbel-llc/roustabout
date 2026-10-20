@@ -76,7 +76,20 @@ issue-filer graph down as exactly this shape today:
   condition under which the edge is taken (`"ok"` or `"fail"`), and the node
   id it leads to.
 - The **judge's threshold** is the `decide` node's `min_confidence`, a plain
-  number. The **question names** a judge node answers against are the keys of
+  number, and its optional `pass_rule` says how the threshold is applied to
+  each question's answer (a choice and a confidence):
+  - `confident-ok` (also what an absent `pass_rule` means): the question
+    passes only when answered `ok` at or above `min_confidence`; a missing
+    confidence counts as 0. An uncertain answer fails either way.
+  - `no-confident-problem`: the question fails only when answered `problem`
+    at or above `min_confidence`, or when the answer is missing or malformed
+    (no choice, no numeric confidence, or a choice other than `ok` and
+    `problem`). An uncertain answer passes either way.
+
+  Any other value is refused. The rule decides failure; the question's mode
+  then decides whether the failure is enforced or recorded as shadow, so a
+  shadow question is measured by the same rule.
+- The **question names** a judge node answers against are the keys of
   the graph's `questions.json` (circus owns the set and the names; roustabout
   fixes none), the node's `modes` must cover exactly those keys, and its
   `gate` must name one of them (the question handed to `juggler decide

@@ -159,6 +159,10 @@ case "$verb" in
     ! knob judge-low || set_answer explicit-instruction-to-file "$(answer ok 0.4)"
     ! knob judge-clean || set_answer no-sensitive-content "$(answer problem 0.8)"
     ! knob judge-faithful || set_answer draft-says-what-the-requester-said-and-nothing-else "$(answer ok 0.2)"
+    # Uncertain problems, as Jev gave them on 2026-10-20: 0.49 ok / 0.51 problem
+    # is confidence 0.02.
+    ! knob judge-unsure || set_answer no-sensitive-content "$(answer problem 0.02)"
+    ! knob judge-unsure || set_answer draft-says-what-the-requester-said-and-nothing-else "$(answer problem 0.3)"
     ! knob judge-five || answers="$(jq -c 'del(.["no-duplicate-of-existing-issue"])' <<< "$answers")"
     jq -nc --argjson a "$answers" '{answers:$a, id:"gen-dec-1", model:"typesafe/jev-1.13"}'
     ;;

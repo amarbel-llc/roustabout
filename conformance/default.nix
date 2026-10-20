@@ -30,8 +30,8 @@ let
   commitScript = pkgs.writeShellScriptBin "issues-commit" (
     builtins.readFile ./standins/fake-commit.bash
   );
-  graphWith =
-    sinkScript: questionModes: gate:
+  graphWithRule =
+    passRule: sinkScript: questionModes: gate:
     import ./fixtures/issue-filer-graph.nix {
       inherit
         pkgs
@@ -40,10 +40,12 @@ let
         sinkScript
         questionModes
         gate
+        passRule
         ;
       drafterBrief = ./fixtures/issue-drafter.brief.toml;
       questions = ./fixtures/approve-question-split-v6.json;
     };
+  graphWith = graphWithRule null;
   allEnforce = {
     "explicit-instruction-to-file" = "enforce";
     "one-draft-per-requested-issue" = "enforce";
@@ -108,6 +110,9 @@ pkgs.runCommand "roustabout-conformance-kit" { } ''
   ln -s ${
     graphWith (fake "fake-sink") allEnforce "no-duplicate-of-existing-issue"
   } "$out/graphs/gate-dup"
+  ln -s ${
+    graphWithRule "no-confident-problem" (fake "fake-sink") shadowModes "explicit-instruction-to-file"
+  } "$out/graphs/lenient"
   ln -s ${noGateGraph} "$out/graphs/no-gate"
   ln -s ${badGraph} "$out/graphs/bad-graph"
 ''
