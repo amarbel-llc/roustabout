@@ -26,7 +26,7 @@
     just-us.inputs.conformist.follows = "conformist";
     just-us.inputs.igloo.follows = "igloo";
     just-us.inputs.nixpkgs-master.follows = "nixpkgs-master";
-    just-us.inputs.clown.inputs.purse-first.follows = "purse-first";
+    just-us.inputs.ringmaster.inputs.purse-first.follows = "purse-first";
 
     # igloo carries the Go build helpers: godyn (buildGoAuto, the go.nix
     # manifest, godyn-go / godyn-test) and mkGoPkgs. See godyn(7).
