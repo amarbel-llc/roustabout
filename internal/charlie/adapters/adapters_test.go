@@ -274,6 +274,31 @@ func TestJugglerSpawnAgentCannotComplete(t *testing.T) {
 	}
 }
 
+// juggler spawn --wait prints the structured result when the brief opted in
+// and the run ended its turn: a JSON value of any type, or result_error; each
+// key is absent otherwise.
+func TestJugglerSpawnAgentReadsTheStructuredResult(t *testing.T) {
+	for name, c := range map[string]struct {
+		stdout, result, resultError string
+		has                         bool
+	}{
+		"absent":       {stdout: `{"state":"succeeded","message":"m"}`},
+		"an object":    {stdout: `{"state":"succeeded","result":{"findings":[]}}`, result: `{"findings":[]}`, has: true},
+		"json null":    {stdout: `{"state":"succeeded","result":null}`, result: `null`, has: true},
+		"an error":     {stdout: `{"state":"succeeded","result_error":"not JSON"}`, resultError: "not JSON"},
+		"failed state": {stdout: `{"state":"failed","result":[]}`, result: `[]`, has: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			x, _ := newExec(t, "HELPER_STDOUT="+c.stdout)
+			j := &Juggler{X: x, Bin: os.Args[0]}
+			resp := j.SpawnAgent(context.Background(), run.SpawnRequest{AsRoot: identity, AgentLimit: time.Second, Backstop: time.Second})
+			if resp.HasResult != c.has || string(resp.Result) != c.result || resp.ResultError != c.resultError {
+				t.Fatalf("%+v", resp)
+			}
+		})
+	}
+}
+
 func TestJugglerDecideAsTheRootWithoutTheMinter(t *testing.T) {
 	x, log := newExec(t, `HELPER_STDOUT={"answers":{"request":{"choice":"ok","confidence":0.9}},"reason":"fine"}`)
 	j := &Juggler{X: x, Bin: os.Args[0], Mint: []string{"TROUPE_MINT_USER=minter"}}

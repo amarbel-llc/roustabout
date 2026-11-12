@@ -58,10 +58,19 @@ type SpawnRequest struct {
 
 // SpawnResponse is the drafter's end.
 type SpawnResponse struct {
-	ExitCode               int
-	Stderr                 string
-	State                  string
-	Message                string
+	ExitCode int
+	Stderr   string
+	State    string
+	Message  string
+	// Result is the structured terminal result of an agent whose brief opted in
+	// with [result] format = "json", as juggler spawn --wait prints it (the JSON
+	// value, compact); HasResult says the key was present, so a JSON null is
+	// not mistaken for none. ResultError is juggler's sentence for a final
+	// message that was unusable. Both are absent for a run that did not opt in
+	// or did not end its turn.
+	Result                 json.RawMessage
+	HasResult              bool
+	ResultError            string
 	CannotCompleteReason   string
 	CannotCompleteIsObject bool
 }

@@ -359,7 +359,16 @@ func (e *attestExecution) runAgent(ctx context.Context, id string) (cond, signal
 	if !ok {
 		return fail(fmt.Sprintf("the %s agent did not complete: %s", n.Label, end.Reason))
 	}
-	found, err := ParseFindings(n.Label, resp.Message)
+	var found []Finding
+	var err error
+	switch {
+	case resp.ResultError != "":
+		err = fmt.Errorf("juggler could not take a result from the agent's final message: %s", resp.ResultError)
+	case !resp.HasResult:
+		err = fmt.Errorf(`the run carries no result; the agent's brief must opt in with [result] format = "json"`)
+	default:
+		found, err = ParseFindings(n.Label, resp.Result)
+	}
 	if err == nil {
 		err = appendFindings(e.path("findings.jsonl"), found)
 	}

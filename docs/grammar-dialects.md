@@ -20,20 +20,16 @@ labelled as unverified.
   truth for the shared core is the text of the block below; once it exists, the
   module, and both notes defer to it. Questions 1 and 2 are ruled.
 - **A structured terminal result and a run transcript digest are accepted** as
-  additive on-disk changes in juggler (schema stays 1); juggler is building both
-  (FDR 0023, Q23). Question 6 is therefore accepted: roustabout's findings come
-  from the structured field rather than from the `message` string. Juggler's
-  design so far, not yet merged: opt-in via the brief, one JSON value taken from
-  the final model message on an `end_turn` run, on the terminal body and
-  `end.result` of the ledger, with `result_error` when it is not valid JSON.
-  That is an adapter change in roustabout; **it does not start before juggler's
-  change is merged and the coordinator says so.** Until then the current
-  `message`-string path stays. Plan: the adapter reads the structured field;
-  `ParseFindings` takes its value; the fail-closed rules (an unreadable result
-  fails the agent) are unchanged; whether the `message` path stays as a fallback
-  after the change is an open question for the coordinator (the relayed ruling
-  says to keep it "until juggler lands it"; two paths mean two to test, and a
-  fallback can hide a missing `result`).
+  additive on-disk changes in juggler (schema stays 1). Question 6 is therefore
+  accepted: roustabout's findings come from the structured field rather than
+  from the `message` string. Juggler built the result (92abf8d) and prints it in
+  `spawn --wait`'s stdout (ef32dee): `result` (the JSON value, compact),
+  `result_error` and `transcript_digest`, each absent when the run did not opt
+  in via its brief or did not end its turn. **Built in roustabout:** the adapter
+  reads `result` and `result_error`; `ParseFindings` takes the value; a missing
+  result, a `result_error`, or an unreadable value fails the agent; the
+  `message` path is removed (the coordinator ruled: no fallback after the change,
+  one path and one set of tests). `transcript_digest` is not read yet.
 
 Questions 1, 2 and 6 below are answered by these (the operator left 3 to 5 at
 the recommendations); they are left in place with the rulings noted.

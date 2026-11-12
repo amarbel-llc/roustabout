@@ -149,12 +149,21 @@ a grammar is pinned.
      (also for issue-filer graphs) and `grammar_right`.
 4. Findings (built; the operator ruled the schema, 2026-11-12: `severity`,
    `path`, `summary`; a check fails the run on any P0 to P2 finding).
-   - An agent's final message is exactly one JSON object,
+   - An agent's structured result is exactly one JSON object,
      `{"findings":[{"severity","path","summary"}]}`, the array empty when it
      found nothing. `severity` is `P0` to `P4`; `path` and `summary` are
-     non-empty and bounded; at most 500 findings a run. Anything else (prose,
-     an empty message, another key, a second object) fails the agent: an
-     attestation that cannot read what its agents found must not pass.
+     non-empty and bounded; at most 500 findings a run. Anything else (no
+     result, juggler's `result_error`, another type or key) fails the agent: an
+     attestation that cannot read what its agents found must not pass. The
+     result is juggler's: `juggler spawn --wait` prints `result` (a JSON value,
+     compact) when the agent's brief opts in with `[result] format = "json"` and
+     the run ended its turn, `result_error` when its final message was
+     unusable, and neither otherwise (juggler 92abf8d, ef32dee). **Every
+     attestation agent's brief must opt in**, or the agent fails with "the run
+     carries no result". roustabout does not read the brief to check; it fails
+     at run time. The agent's `message` is not read for findings (operator
+     ruling: one path, no fallback). Success is the run's `state`, never the
+     presence of `result`: a failed agent can carry one.
    - roustabout writes each finding, with the reporting node's label as
      `agent` (set by roustabout, never by the agent), to the run's
      `findings.jsonl` (0600, one JSON object per line). `check` is given the

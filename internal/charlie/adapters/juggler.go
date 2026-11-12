@@ -98,6 +98,8 @@ func (j *Juggler) SpawnAgent(ctx context.Context, r run.SpawnRequest) run.SpawnR
 	resp := run.SpawnResponse{ExitCode: out.RC, Stderr: out.Stderr}
 	if o := object(out.Stdout); o != nil {
 		resp.State, resp.Message = str(o, "state"), str(o, "message")
+		resp.Result, resp.HasResult = o["result"]
+		resp.ResultError = str(o, "result_error")
 		if cc := object(o["cannot_complete"]); cc != nil {
 			resp.CannotCompleteIsObject = true
 			resp.CannotCompleteReason = str(cc, "reason")

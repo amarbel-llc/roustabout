@@ -32,9 +32,11 @@ type attestHarness struct {
 	tokenMode os.FileMode
 	resolves  []ResolveRequest
 	onSpawn   func()
-	// message is the agent's final message for the i-th spawn; the default is
-	// no findings.
-	message      func(i int) string
+	// result is the structured result juggler prints for the i-th spawn, as raw
+	// JSON; "" is no result at all (the key absent). The default is no
+	// findings. resultError, when set, is juggler's result_error sentence.
+	result       func(i int) string
+	resultError  string
 	findingsSeen string
 }
 
@@ -57,11 +59,15 @@ func (h *attestHarness) SpawnAgent(_ context.Context, r SpawnRequest) SpawnRespo
 	if h.onSpawn != nil {
 		h.onSpawn()
 	}
-	msg := `{"findings":[]}`
-	if h.message != nil {
-		msg = h.message(len(h.spawns) - 1)
+	res := `{"findings":[]}`
+	if h.result != nil {
+		res = h.result(len(h.spawns) - 1)
 	}
-	return SpawnResponse{State: h.spawnState, Message: msg}
+	// The message is prose the findings must never be read from.
+	return SpawnResponse{
+		State: h.spawnState, Message: `{"findings":[{"severity":"P0","path":"x","summary":"from the message"}]}`,
+		Result: json.RawMessage(res), HasResult: res != "", ResultError: h.resultError,
+	}
 }
 
 func (h *attestHarness) Decide(context.Context, DecideRequest) DecideResponse {
@@ -205,7 +211,7 @@ func TestAttestRunConfersTheTokenOnTheCommitAlone(t *testing.T) {
 
 func TestAttestRunCollectsEachAgentsFindingsForTheCheck(t *testing.T) {
 	h := newAttestHarness(t)
-	h.message = func(i int) string {
+	h.result = func(i int) string {
 		if i == 0 {
 			return `{"findings":[{"severity":"P1","path":"a.go","summary":"nil deref"}]}`
 		}
@@ -234,24 +240,27 @@ func TestAttestRunCollectsEachAgentsFindingsForTheCheck(t *testing.T) {
 }
 
 // An attestation that cannot read what an agent found must not pass.
-func TestAttestRunFailsClosedOnAnUnreadableFindingsMessage(t *testing.T) {
-	for name, msg := range map[string]string{
-		"empty":            "",
-		"prose":            "looks fine to me",
-		"no findings key":  `{"ok":true}`,
-		"null findings":    `{"findings":null}`,
-		"unknown severity": `{"findings":[{"severity":"P9","path":"a","summary":"x"}]}`,
-		"no path":          `{"findings":[{"severity":"P1","path":"","summary":"x"}]}`,
-		"extra key":        `{"findings":[],"verdict":"pass"}`,
-		"two objects":      `{"findings":[]} {"findings":[]}`,
+func TestAttestRunFailsClosedOnAnUnreadableResult(t *testing.T) {
+	for name, c := range map[string]struct{ result, resultError, want string }{
+		"no result at all (the brief did not opt in)": {want: "must opt in"},
+		"juggler could not take one":                  {resultError: "the final message is not JSON", want: "the final message is not JSON"},
+		"json null":                                   {result: `null`, want: "not one JSON object"},
+		"an array":                                    {result: `[]`, want: "not one JSON object"},
+		"a string":                                    {result: `"all fine"`, want: "not one JSON object"},
+		"no findings key":                             {result: `{"ok":true}`, want: "not one JSON object"},
+		"null findings":                               {result: `{"findings":null}`, want: "not one JSON object"},
+		"unknown severity":                            {result: `{"findings":[{"severity":"P9","path":"a","summary":"x"}]}`, want: "severity"},
+		"no path":                                     {result: `{"findings":[{"severity":"P1","path":"","summary":"x"}]}`, want: "path"},
+		"extra key":                                   {result: `{"findings":[],"verdict":"pass"}`, want: "not one JSON object"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			h := newAttestHarness(t)
-			h.message = func(int) string { return msg }
+			h.result = func(int) string { return c.result }
+			h.resultError = c.resultError
 			r, _ := h.runner(graphtest.LoadAttest(t, graphtest.AttestOptions{}))
 			out, _ := r.Run(context.Background(), attestInput(t))
 			s := summaryOf(t, out)
-			if s["state"] != "failed" || !strings.Contains(s["reason"].(string), "findings could not be read") {
+			if s["state"] != "failed" || !strings.Contains(s["reason"].(string), "findings could not be read") || !strings.Contains(s["reason"].(string), c.want) {
 				t.Fatalf("summary %v", s)
 			}
 			if got := strings.Join(h.calls, ","); got != "new-run,agent,sink,resolve" {
@@ -261,8 +270,26 @@ func TestAttestRunFailsClosedOnAnUnreadableFindingsMessage(t *testing.T) {
 	}
 }
 
+// The message is never read for findings: the harness puts a P0 in it, and an
+// empty result passes.
+func TestAttestRunIgnoresTheMessage(t *testing.T) {
+	h := newAttestHarness(t)
+	r, _ := h.runner(graphtest.LoadAttest(t, graphtest.AttestOptions{}))
+	out, _ := r.Run(context.Background(), attestInput(t))
+	if s := summaryOf(t, out); s["state"] != "passed" {
+		t.Fatalf("summary %v", s)
+	}
+	var rec map[string]any
+	if err := json.Unmarshal(h.resolves[0].Record, &rec); err != nil {
+		t.Fatal(err)
+	}
+	if rec["findings"].(map[string]any)["P0"] != 0.0 || strings.Contains(h.findingsSeen, "from the message") {
+		t.Fatalf("findings read from the message: %v %q", rec["findings"], h.findingsSeen)
+	}
+}
+
 func TestParseFindingsKeepsTheAgentAndBoundsTheCount(t *testing.T) {
-	got, err := ParseFindings("agent-z", ` {"findings":[{"severity":"P4","path":"x","summary":"y"}]} `)
+	got, err := ParseFindings("agent-z", json.RawMessage(` {"findings":[{"severity":"P4","path":"x","summary":"y"}]} `))
 	if err != nil || len(got) != 1 || got[0].Agent != "agent-z" {
 		t.Fatalf("%+v %v", got, err)
 	}
@@ -270,7 +297,7 @@ func TestParseFindingsKeepsTheAgentAndBoundsTheCount(t *testing.T) {
 	for i := 0; i <= maxFindings; i++ {
 		many = append(many, `{"severity":"P4","path":"x","summary":"y"}`)
 	}
-	if _, err := ParseFindings("a", `{"findings":[`+strings.Join(many, ",")+`]}`); err == nil {
+	if _, err := ParseFindings("a", json.RawMessage(`{"findings":[`+strings.Join(many, ",")+`]}`)); err == nil {
 		t.Fatal("more findings than a run keeps were accepted")
 	}
 }

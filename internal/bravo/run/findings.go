@@ -10,13 +10,14 @@ import (
 )
 
 // Findings are what an attestation agent reports (docs/attestation-graph.md,
-// operator ruling 2026-11-12): its final message is one JSON object,
-// {"findings":[{"severity","path","summary"}]}, with an empty array when it
-// found nothing. roustabout validates them and writes them to the run's
+// operator ruling 2026-11-12): the structured result juggler takes from its
+// final message (the brief opts in with [result] format = "json") is one JSON
+// object, {"findings":[{"severity","path","summary"}]}, with an empty array when
+// it found nothing. roustabout validates them and writes them to the run's
 // findings file, which the check and the commit are handed by path; the check
-// fails the run on any P0 to P2 finding. A message that is not exactly that
-// fails the agent: an attestation that cannot read what its agents found must
-// not pass.
+// fails the run on any P0 to P2 finding. A result that is not exactly that, or
+// no result at all, fails the agent: an attestation that cannot read what its
+// agents found must not pass.
 const (
 	maxFindings       = 500
 	maxFindingPath    = 1000
@@ -37,8 +38,8 @@ type Finding struct {
 	Summary  string `json:"summary"`
 }
 
-// ParseFindings reads an agent's final message.
-func ParseFindings(agent, message string) ([]Finding, error) {
+// ParseFindings reads an agent's structured result.
+func ParseFindings(agent string, result json.RawMessage) ([]Finding, error) {
 	var doc struct {
 		Findings *[]struct {
 			Severity string `json:"severity"`
@@ -46,10 +47,10 @@ func ParseFindings(agent, message string) ([]Finding, error) {
 			Summary  string `json:"summary"`
 		} `json:"findings"`
 	}
-	dec := json.NewDecoder(strings.NewReader(strings.TrimSpace(message)))
+	dec := json.NewDecoder(bytes.NewReader(bytes.TrimSpace(result)))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&doc); err != nil || doc.Findings == nil || dec.More() {
-		return nil, fmt.Errorf(`the message is not one JSON object {"findings":[...]}`)
+		return nil, fmt.Errorf(`the result is not one JSON object {"findings":[...]}`)
 	}
 	if len(*doc.Findings) > maxFindings {
 		return nil, fmt.Errorf("%d findings, more than the %d a run keeps", len(*doc.Findings), maxFindings)
