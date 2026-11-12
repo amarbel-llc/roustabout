@@ -17,8 +17,25 @@ binary's bytes → roustabout's adapter tests.
 
 ## 1. The contract file
 
-`contract/juggler-adapter.json` in roustabout, schema 1, JSON (juggler's tests are
-bats and read every assertion with jq, so no new tool).
+`internal/charlie/adapters/testdata/juggler-adapter.contract.json` in roustabout
+(built; the first draft of this note said `contract/juggler-adapter.json`), schema
+1, JSON (juggler's tests are bats and read every assertion with jq, so no new
+tool). It lives under `testdata/` because godyn's test lane runs a package's tests
+with the package directory as cwd, so `testdata/` resolves, while `go:embed` is not
+supported there (no embed configuration) and files outside the package are not
+available. Juggler's vendored copy keeps the name `contract/roustabout-adapter.json`.
+
+Built as of the slice-1 commit: the file with the four verbs, and the test
+`contract_test.go` that runs the adapter on each verb with fixed placeholder
+values (with and without each optional group) and fails if the argv differs from
+the file's, if a listed `env` name is not set, if an `env_absent` name is set, if
+`decide`'s stdin differs from the file's payload, or if the file declares a verb
+the adapter does not call or an undeclared placeholder. The test fails on drift
+(checked by changing `--min-confidence` in the file and seeing it fail with the
+adapter's and the file's argv side by side). It does not yet check the `stdout` and
+`exit` entries against the adapter; those are juggler's to run against the real
+binary, and the recorded testdata (slice 2) is what the adapter's parsing is
+tested against.
 
 ```
 { "schema": 1, "consumer": "roustabout",

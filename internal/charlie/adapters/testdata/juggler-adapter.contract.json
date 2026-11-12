@@ -1,0 +1,102 @@
+{
+  "schema": 1,
+  "consumer": "roustabout",
+  "doc": "docs/juggler-contract-format.md; this file is internal/charlie/adapters/testdata/juggler-adapter.contract.json in roustabout. The calls roustabout's juggler adapter (juggler.go) makes and what it reads back. Only keys the adapter reads are listed. A test in this package renders each verb's argv with the placeholder values below and compares it to what the adapter runs, so this file cannot drift from the code. Optional argument groups are appended after argv, in order.",
+  "placeholders": {
+    "run_key": "string",
+    "input_file": "file",
+    "room_domain": "string",
+    "operator_jid": "string",
+    "issuer": "string",
+    "brief_file": "file",
+    "task_file": "file",
+    "timeout": "duration",
+    "model": "string",
+    "room": "string",
+    "parent": "string",
+    "question": "string",
+    "run_job": "string",
+    "state": "string",
+    "reason": "json",
+    "artifacts": "json"
+  },
+  "adapter_exits": [124, 127, "128+n"],
+  "verbs": [
+    {
+      "name": "spawn-new-run",
+      "argv": ["spawn", "--new-run", "--run-key", "{run_key}", "--input", "{input_file}", "--room-domain", "{room_domain}", "--operator-jid", "{operator_jid}"],
+      "argv_optional": [["--issuer", "{issuer}"]],
+      "env": ["TROUPE_MINT_USER", "TROUPE_MINT_PASSWORD_FILE"],
+      "stdin": null,
+      "stdout": [
+        {"key": "run_job", "type": "string", "present_at_exit": [0]},
+        {"key": "room", "type": "string", "present_at_exit": [0]},
+        {"key": "root_stanza", "type": "string", "present_at_exit": [0]},
+        {"key": "root_principal", "type": "string", "present_at_exit": [0]},
+        {"key": "root_jid", "type": "string", "present_at_exit": [0]},
+        {"key": "root_credential_ref", "type": "string", "present_at_exit": [0]},
+        {"key": "existing", "type": "bool"},
+        {"key": "resolved", "type": "bool"},
+        {"key": "pending", "type": "bool", "present_at_exit": [1], "absent_at_exit": [0]}
+      ],
+      "exit": [0, 1],
+      "notes": "Any non-zero exit is 'the run was not started'. root_jid must contain '@' (the adapter splits it into the account and its domain)."
+    },
+    {
+      "name": "spawn-wait",
+      "argv": ["spawn", "--brief", "{brief_file}", "--task", "{task_file}", "--run-key", "{run_key}", "--wait", "--timeout", "{timeout}"],
+      "argv_optional": [["--user"]],
+      "env": ["CLOWN_SESSION_ID", "TROUPE_XMPP_USER", "TROUPE_XMPP_DOMAIN", "TROUPE_XMPP_PASSWORD_FILE", "TROUPE_MINT_USER", "TROUPE_MINT_PASSWORD_FILE", "MOXIN_PATH"],
+      "stdin": null,
+      "stdout": [
+        {"key": "state", "type": "string", "present_at_exit": [0]},
+        {"key": "message", "type": "string"},
+        {"key": "cannot_complete", "type": "object"},
+        {"key": "result", "type": "json", "key_present": true},
+        {"key": "result_error", "type": "string"}
+      ],
+      "exit": [0, 1, 2, 3, 4, 5],
+      "notes": "Exit 0 with state 'succeeded' and no cannot_complete is a clean end; 5 is still running, 4 interrupted, 3 aborted, 2 failed, 1 could not be started. result is any JSON value; a JSON null is a value and an absent key is absence. Success is the run's state, never the presence of result. cannot_complete, when present, is an object with a string 'reason'."
+    },
+    {
+      "name": "decide",
+      "argv": ["decide", "--run-key", "{run_key}", "--model", "{model}", "--room", "{room}", "--parent", "{parent}", "--min-confidence", "0", "--question", "{question}"],
+      "argv_optional": [],
+      "env": ["CLOWN_SESSION_ID", "TROUPE_XMPP_USER", "TROUPE_XMPP_DOMAIN", "TROUPE_XMPP_PASSWORD_FILE"],
+      "env_absent": ["TROUPE_MINT_USER", "TROUPE_MINT_PASSWORD_FILE"],
+      "question": "no-sensitive-content",
+      "stdin": {
+        "state": {},
+        "questions": {
+          "no-sensitive-content": {"type": "choice", "criteria": {"ok": "nothing sensitive", "problem": "something sensitive"}, "instructions": "Decide whether the draft carries sensitive content."},
+          "right-repo-not-a-mirror": {"type": "choice", "criteria": {"ok": "the repository is not a mirror", "problem": "the repository is a mirror"}, "instructions": "Decide whether the draft is for a repository that is not a mirror."}
+        }
+      },
+      "fake_response": {
+        "answers": {
+          "no-sensitive-content": {"choice": "ok", "confidence": 0.9},
+          "right-repo-not-a-mirror": {"choice": "ok", "confidence": 0.9}
+        }
+      },
+      "stdout": [
+        {"key": "answers", "type": "object", "present_at_exit": [0]},
+        {"key": "reason", "type": "string"}
+      ],
+      "exit": [0],
+      "notes": "Any non-zero exit is a failure of the judge. answers is an object keyed by every question name in the payload; each value has a string 'choice' and a numeric 'confidence'. The adapter passes --min-confidence 0 and applies the threshold itself. The question ids are the keys of the graph's questions file; these two are real ones, with short criteria text, not the real instructions."
+    },
+    {
+      "name": "resolve",
+      "argv": ["resolve", "{run_job}", "--state={state}", "--reason={reason}", "--fallback-artifacts={artifacts}"],
+      "argv_optional": [],
+      "env": ["TROUPE_MINT_USER", "TROUPE_MINT_PASSWORD_FILE"],
+      "stdin": null,
+      "stdout": [
+        {"key": "torn_down", "type": "bool", "present_at_exit": [0]},
+        {"key": "teardown", "type": "array", "items": {"ok": "bool", "jid": "string", "reason": "string"}}
+      ],
+      "exit": [0, 1],
+      "notes": "Idempotent: a second call finds already_resolved. A teardown entry whose ok is false or absent is logged as unclean."
+    }
+  ]
+}
