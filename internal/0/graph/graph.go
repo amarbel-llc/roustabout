@@ -173,6 +173,10 @@ type Graph struct {
 	// section is refused.
 	Result []ResultStep
 
+	// RequestType is the request type the pinned grammar names, or
+	// RequestIssueFiler when the host pinned none.
+	RequestType string
+
 	// The four nodes, found by kind.
 	DraftID, JudgeID, CommitID, SinkID string
 
@@ -312,6 +316,7 @@ func Load(root fs.FS, expect Expect) (*Graph, error) {
 // checkGrammar checks the sentence against the host's pinned grammar, if the
 // host supplied one.
 func checkGrammar(g *Graph, expect Expect) error {
+	g.RequestType = RequestIssueFiler
 	if expect.Grammar == nil && expect.GrammarDigest == "" {
 		return nil
 	}
@@ -322,7 +327,11 @@ func checkGrammar(g *Graph, expect Expect) error {
 	if err != nil {
 		return err
 	}
-	return gr.Check(g)
+	if err := gr.Check(g); err != nil {
+		return err
+	}
+	g.RequestType = gr.RequestType()
+	return nil
 }
 
 func refuse(format string, args ...any) error {

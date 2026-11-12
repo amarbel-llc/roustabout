@@ -30,6 +30,25 @@ type Grammar struct {
 	Edges       []Edge             `json:"edges"`
 	Constraints GrammarConstraints `json:"constraints"`
 	Result      []GrammarStep      `json:"result"`
+	// Request names the request type a run of this grammar takes; absent
+	// means RequestIssueFiler, so a grammar written before the field keeps its
+	// digest.
+	Request string `json:"request,omitempty"`
+}
+
+// The request types a grammar may name (docs/attestation-graph.md). The
+// parsers are in package request.
+const (
+	RequestIssueFiler = "issue-filer/1"
+	RequestAttest     = "attest/1"
+)
+
+// RequestType is the request type a run of the grammar takes.
+func (gr *Grammar) RequestType() string {
+	if gr.Request == "" {
+		return RequestIssueFiler
+	}
+	return gr.Request
 }
 
 // GrammarConstraints are the rules that are not edges.
@@ -87,6 +106,9 @@ func ParseGrammar(raw []byte) (*Grammar, error) {
 			return nil, fmt.Errorf("grammar %q: the edge %v leaves %s on %q, which is not one of its outcomes %v",
 				gr.Grammar, e, from, cond, kindTable[from].outcomes)
 		}
+	}
+	if rt := gr.RequestType(); rt != RequestIssueFiler && rt != RequestAttest {
+		return nil, fmt.Errorf("grammar %q: request type %q is not one this build ships (%s, %s)", gr.Grammar, rt, RequestIssueFiler, RequestAttest)
 	}
 	c := gr.Constraints
 	if !slices.Contains(gr.Kinds, c.EntryKind) {

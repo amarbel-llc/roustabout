@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"code.linenisgreat.com/roustabout/internal/0/graph"
 	"code.linenisgreat.com/roustabout/internal/0/graph/graphtest"
 	"code.linenisgreat.com/roustabout/internal/bravo/run"
 )
@@ -110,6 +111,24 @@ func TestRunVerbRefusesAGraphOfAnotherShape(t *testing.T) {
 	}
 	code, stdout, _ := runVerb(t, flags(dir), `{"text":"x"}`, okPorts{}, nil)
 	if code != 2 || !strings.Contains(stdout, `"outcome":"refused"`) || !strings.Contains(stdout, "not the shape roustabout runs") {
+		t.Fatalf("exit %d stdout %s", code, stdout)
+	}
+}
+
+func TestRunVerbRefusesAGrammarForAnotherRequestType(t *testing.T) {
+	dir := t.TempDir()
+	graphtest.WriteDir(t, dir, graphtest.Options{})
+	grammar := `{"grammar":"issue-filer-seq","version":1,"kinds":["agent","decide","commit","sink"],` +
+		`"edges":[["agent","ok","decide"],["decide","ok","commit"],["agent","fail","sink"],["decide","fail","sink"],["commit","fail","sink"]],` +
+		`"constraints":{"entry_kind":"agent","one_fail_target":true,"max_nodes_per_kind":{"agent":1,"decide":1,"commit":1,"sink":1},"gates":"none"},` +
+		`"result":[{"step":"freeze-store"},{"step":"wake","optional":true},{"step":"resolve"}],"request":"attest/1"}`
+	file := dir + "/grammar.json"
+	if err := os.WriteFile(file, []byte(grammar), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	pin := graph.Digest([]byte(grammar))
+	code, stdout, _ := runVerb(t, flags(dir, "--grammar", file, "--grammar-digest", pin), `{"text":"file an issue"}`, okPorts{}, nil)
+	if code != 2 || !strings.Contains(stdout, "request type is attest/1") {
 		t.Fatalf("exit %d stdout %s", code, stdout)
 	}
 }

@@ -164,6 +164,13 @@ func execute(ctx context.Context, e env, args []string) int {
 	if runner.GraphErr == nil {
 		runner.Graph, runner.GraphErr = graph.Load(os.DirFS(o.graphDir), expect)
 	}
+	// run takes the issue-filer request; a grammar that names another request
+	// type is for a runner that does not exist yet, and is refused rather than
+	// run on a request of the wrong shape.
+	if runner.GraphErr == nil && runner.Graph.RequestType != graph.RequestIssueFiler {
+		runner.GraphErr = fmt.Errorf("the grammar's request type is %s, which roustabout run does not run yet", runner.Graph.RequestType)
+		runner.Graph = nil
+	}
 
 	ctx, cancel := context.WithCancelCause(ctx)
 	defer cancel(nil)

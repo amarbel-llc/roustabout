@@ -82,7 +82,14 @@ a grammar is pinned.
 ## Order
 
 1. The grammar right's name (built).
-2. The attestation request type and its parser, selected by the grammar.
+2. The attestation request type and its parser, selected by the grammar
+   (built: a grammar's optional `request` field names `issue-filer/1`, the
+   default and absent from older grammars so their digests hold, or `attest/1`;
+   `request.ParseAttest` reads `session_key`, `worktree`, `merge_base`, `head`,
+   `principal` and an optional `request_id`. `roustabout run` does not yet
+   dispatch on it: it refuses a grammar that names `attest/1` rather than run
+   it on an issue-filer request, until the walker runs an attestation graph,
+   step 3.)
 3. The walker running several agent nodes; the topology-bound loader checks
    moved to the grammar.
 4. The non-writing script kind decision, then the audit and cutoff nodes.
