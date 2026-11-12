@@ -530,11 +530,16 @@ func TrafficChanged(judgedSHA, nowSHA string) (Ending, bool) {
 
 // Summary is the one JSON object a run prints.
 type Summary struct {
-	Outcome            Outcome         `json:"outcome"`
-	RunKey             string          `json:"run_key"`
-	RunJob             string          `json:"run_job"`
-	Room               string          `json:"room"`
-	GraphDigest        string          `json:"graph_digest"`
+	Outcome     Outcome `json:"outcome"`
+	RunKey      string  `json:"run_key"`
+	RunJob      string  `json:"run_job"`
+	Room        string  `json:"room"`
+	GraphDigest string  `json:"graph_digest"`
+	// RoustaboutVersion and RoustaboutCommit name the runtime build that
+	// interpreted the request; like the ledger they are in the summary, not
+	// in the result record.
+	RoustaboutVersion  string          `json:"roustabout_version,omitempty"`
+	RoustaboutCommit   string          `json:"roustabout_commit,omitempty"`
 	MinConfidence      *float64        `json:"min_confidence"`
 	Existing           bool            `json:"existing"`
 	State              *State          `json:"state"`

@@ -47,6 +47,8 @@
   "reason": "the commit filed nothing",
   "resolved": true,
   "room": "issue-filer-1760313600123-79c82954@runs.example.invalid",
+  "roustabout_commit": "<commit>",
+  "roustabout_version": "<version>",
   "run_job": "job-run-1",
   "run_key": "issue-filer-1760313600123-79c82954",
   "shadow_failed_checks": [],

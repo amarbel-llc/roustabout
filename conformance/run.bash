@@ -134,7 +134,10 @@ normalise() { # DIR NAME: the artifact, readable for diffing; paths and ids neut
       summary.json)
         # A key that is null and a key that is absent read the same to a
         # consumer that picks fields with jq.
-        jq -S 'with_entries(select(.value != null))' "$f" 2> /dev/null || cat "$f"
+        # The runtime build moves with every commit, so its version and commit
+        # are pinned as present, not by value.
+        jq -S 'with_entries(select(.value != null))
+          | if has("roustabout_version") then .roustabout_version = "<version>" | .roustabout_commit = "<commit>" else . end' "$f" 2> /dev/null || cat "$f"
         ;;
       decide.stdin | new-run.input | resolve.reason | resolve.artifacts | sink.stdin)
         jq -S . "$f" 2> /dev/null || cat "$f"

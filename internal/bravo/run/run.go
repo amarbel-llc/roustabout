@@ -57,10 +57,13 @@ type Runner struct {
 	Graph    *graph.Graph
 	GraphErr error
 	Config   Config
-	Ports    Ports
-	Now      func() time.Time
-	Sleep    func(time.Duration)
-	Log      io.Writer
+	// Version and Commit name the roustabout build; a run's summary carries
+	// them so a result names the runtime that produced it.
+	Version, Commit string
+	Ports           Ports
+	Now             func() time.Time
+	Sleep           func(time.Duration)
+	Log             io.Writer
 }
 
 // Refused is the summary of a request or graph that was not run.
@@ -340,7 +343,7 @@ func (e *execution) baseSummary(o rr.Outcome) rr.Summary {
 	resolved := false
 	s := rr.Summary{
 		Outcome: o, RunKey: e.runKey, RunJob: e.runJob, Room: e.room,
-		GraphDigest: e.g.Digest, MinConfidence: &thr, Resolved: &resolved,
+		GraphDigest: e.g.Digest, RoustaboutVersion: e.r.Version, RoustaboutCommit: e.r.Commit, MinConfidence: &thr, Resolved: &resolved,
 	}
 	s.Normalize()
 	return s

@@ -52,6 +52,8 @@
   "reason": "the commit was partial: 1 issue(s) filed, 1 not (the forges have no multi-issue transaction)",
   "resolved": true,
   "room": "issue-filer-1760313600123-79c82954@runs.example.invalid",
+  "roustabout_commit": "<commit>",
+  "roustabout_version": "<version>",
   "run_job": "job-run-1",
   "run_key": "issue-filer-1760313600123-79c82954",
   "shadow_failed_checks": [],

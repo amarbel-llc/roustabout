@@ -38,6 +38,8 @@
   "outcome": "success",
   "resolved": true,
   "room": "issue-filer-b79cf04b0c58bec5@runs.example.invalid",
+  "roustabout_commit": "<commit>",
+  "roustabout_version": "<version>",
   "run_job": "job-run-1",
   "run_key": "issue-filer-b79cf04b0c58bec5",
   "shadow_failed_checks": [],

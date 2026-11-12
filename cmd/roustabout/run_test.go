@@ -97,6 +97,9 @@ func TestRunVerbRunsTheGraphDocument(t *testing.T) {
 	if s["graph_digest"] != g.Digest {
 		t.Fatalf("graph digest %v, want %s", s["graph_digest"], g.Digest)
 	}
+	if s["roustabout_version"] != version || s["roustabout_commit"] != commit {
+		t.Fatalf("runtime %v+%v, want %s+%s", s["roustabout_version"], s["roustabout_commit"], version, commit)
+	}
 }
 
 func TestRunVerbRefusesAGraphOfAnotherShape(t *testing.T) {

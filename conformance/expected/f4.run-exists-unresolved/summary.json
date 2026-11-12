@@ -9,6 +9,8 @@
   "reason": "a run with this key already exists; its result is the terminal record of its run job",
   "resolved": false,
   "room": "issue-filer-ce1ba84fb93c505f@runs.example.invalid",
+  "roustabout_commit": "<commit>",
+  "roustabout_version": "<version>",
   "run_job": "job-run-1",
   "run_key": "issue-filer-ce1ba84fb93c505f",
   "shadow_failed_checks": []

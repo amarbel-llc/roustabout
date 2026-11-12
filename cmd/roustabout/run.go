@@ -153,7 +153,7 @@ func execute(ctx context.Context, e env, args []string) int {
 		return rr.ExitRefused
 	}
 
-	runner := &run.Runner{Config: o.config(e.lookup), Log: e.stderr, Ports: e.ports(o, e.environ, e.stderr)}
+	runner := &run.Runner{Version: version, Commit: commit, Config: o.config(e.lookup), Log: e.stderr, Ports: e.ports(o, e.environ, e.stderr)}
 	expect := graph.Expect{Moxin: o.issuesMoxin, CommitProgram: o.commitProgram}
 	if o.grammar != "" {
 		if expect.Grammar, err = os.ReadFile(o.grammar); err != nil {
