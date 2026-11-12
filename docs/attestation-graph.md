@@ -91,9 +91,35 @@ a grammar is pinned.
    it on an issue-filer request, until the walker runs an attestation graph,
    step 3.)
 3. The walker running several agent nodes; the topology-bound loader checks
-   moved to the grammar.
-4. The non-writing script kind decision, then the audit and cutoff nodes.
-5. `attest/1`, with the ledger in the record.
+   moved to the grammar. Built as a separate path, so the pinned issue-filer
+   one cannot move (operator-approved, 2026-11-12):
+   - `graph.LoadAttest` reads an attestation graph under a pinned `attest/1`
+     grammar (it refuses a graph without one): agents in a sequence of ok
+     edges, `check` scripts, at most one `commit`, exactly one `sink`, an agent
+     entry, and the result `[{resolve, attest/1}]`. An agent node declares
+     `brief` (a digest, the file in `briefs/<digest>.toml`), `moxin`, `model`
+     and `worktree: "ro"`; the worktree path is the request's, never the
+     document's.
+   - `check` is a new script kind that never writes (the `sink`'s fail
+     semantics differ): outcomes ok and fail, a fail edge required.
+   - `run.AttestRunner` walks it: each agent is spawned as the run root with its
+     own brief and a task naming the worktree and the diff; a `check` or the
+     `commit` is a ringmaster job; the `commit` alone is conferred a
+     one-run token in a `0600` file; a fail edge runs the sink and fails the
+     run; the run resolves with the `attest/1` record. `roustabout run`
+     dispatches on the pinned grammar's request type.
+   - Not done in this slice: the agents' `model` and `worktree: ro` are
+     validated and in the digest, but the runner does not yet pass them to
+     juggler (`juggler spawn` has no flag for either that this repo knows of)
+     and the read-only mount is spinclass's lane; the run root is minted
+     under `--issuer`, not yet under the requesting principal's grant chain.
+4. The audit and cutoff nodes: held for the operator with the findings schema.
+   `check` and `commit` scripts are given the request file (and the commit its
+   token) and `ATTEST_*` environment variables naming the run, the graph and
+   the diff; how findings reach them is not decided.
+5. `attest/1`, with the ledger in the record (built: `AttestRecord`: state
+   `passed` or `failed`, run key, graph digest, session key, merge base, head,
+   the ledger, and a reason on a failed run).
 6. Checking the right against the grant chain, once grants exist.
 
 Each step stays behind `just test-conformance`.

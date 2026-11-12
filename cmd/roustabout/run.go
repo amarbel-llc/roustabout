@@ -161,15 +161,18 @@ func execute(ctx context.Context, e env, args []string) int {
 		}
 		expect.GrammarDigest = o.grammarDigest
 	}
-	if runner.GraphErr == nil {
-		runner.Graph, runner.GraphErr = graph.Load(os.DirFS(o.graphDir), expect)
+	// The pinned grammar chooses the request type, and so the runner. A grammar
+	// that cannot be read as pinned falls through to the issue-filer loader,
+	// which reports it.
+	var attest *run.AttestRunner
+	if runner.GraphErr == nil && o.grammar != "" {
+		if rt, err := graph.PinnedRequestType(expect); err == nil && rt == graph.RequestAttest {
+			attest = &run.AttestRunner{Version: version, Commit: commit, Base: *runner}
+			attest.Graph, attest.GraphErr = graph.LoadAttest(os.DirFS(o.graphDir), expect)
+		}
 	}
-	// run takes the issue-filer request; a grammar that names another request
-	// type is for a runner that does not exist yet, and is refused rather than
-	// run on a request of the wrong shape.
-	if runner.GraphErr == nil && runner.Graph.RequestType != graph.RequestIssueFiler {
-		runner.GraphErr = fmt.Errorf("the grammar's request type is %s, which roustabout run does not run yet", runner.Graph.RequestType)
-		runner.Graph = nil
+	if attest == nil && runner.GraphErr == nil {
+		runner.Graph, runner.GraphErr = graph.Load(os.DirFS(o.graphDir), expect)
 	}
 
 	ctx, cancel := context.WithCancelCause(ctx)
@@ -196,7 +199,13 @@ func execute(ctx context.Context, e env, args []string) int {
 		}()
 	}
 
-	summary, code := runner.Run(ctx, input)
+	var summary any
+	var code int
+	if attest != nil {
+		summary, code = attest.Run(ctx, input)
+	} else {
+		summary, code = runner.Run(ctx, input)
+	}
 	b, err := rr.Marshal(summary)
 	if err != nil {
 		fmt.Fprintln(e.stderr, "roustabout run: the summary could not be built:", err)

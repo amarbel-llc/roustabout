@@ -115,20 +115,51 @@ func TestRunVerbRefusesAGraphOfAnotherShape(t *testing.T) {
 	}
 }
 
-func TestRunVerbRefusesAGrammarForAnotherRequestType(t *testing.T) {
-	dir := t.TempDir()
-	graphtest.WriteDir(t, dir, graphtest.Options{})
-	grammar := `{"grammar":"issue-filer-seq","version":1,"kinds":["agent","decide","commit","sink"],` +
-		`"edges":[["agent","ok","decide"],["decide","ok","commit"],["agent","fail","sink"],["decide","fail","sink"],["commit","fail","sink"]],` +
-		`"constraints":{"entry_kind":"agent","one_fail_target":true,"max_nodes_per_kind":{"agent":1,"decide":1,"commit":1,"sink":1},"gates":"none"},` +
-		`"result":[{"step":"freeze-store"},{"step":"wake","optional":true},{"step":"resolve"}],"request":"attest/1"}`
+func attestFlags(t *testing.T, dir string) []string {
+	t.Helper()
 	file := dir + "/grammar.json"
-	if err := os.WriteFile(file, []byte(grammar), 0o600); err != nil {
+	if err := os.WriteFile(file, []byte(graphtest.AttestGrammar), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	pin := graph.Digest([]byte(grammar))
-	code, stdout, _ := runVerb(t, flags(dir, "--grammar", file, "--grammar-digest", pin), `{"text":"file an issue"}`, okPorts{}, nil)
-	if code != 2 || !strings.Contains(stdout, "request type is attest/1") {
+	return flags(dir, "--commit-program", graphtest.CommitProgram, "--grammar", file, "--grammar-digest", graph.Digest([]byte(graphtest.AttestGrammar)))
+}
+
+const attestRequest = `{"session_key":"roustabout/mild-yew","worktree":"/work/wt","merge_base":"5e25791","head":"abf3213","principal":"p-1"}`
+
+// A grammar whose request type is attest/1 sends the run to the attestation
+// runner: an attestation graph runs, on an attestation request.
+func TestRunVerbRunsAnAttestationGraphUnderAnAttestGrammar(t *testing.T) {
+	dir := t.TempDir()
+	graphtest.WriteAttestDir(t, dir, graphtest.AttestOptions{})
+	code, stdout, stderr := runVerb(t, attestFlags(t, dir), attestRequest, okPorts{}, nil)
+	var s map[string]any
+	if err := json.Unmarshal([]byte(stdout), &s); err != nil || code != 0 {
+		t.Fatalf("exit %d stdout %q stderr %s", code, stdout, stderr)
+	}
+	g := graphtest.LoadAttest(t, graphtest.AttestOptions{})
+	if s["outcome"] != "success" || s["state"] != "passed" || s["graph_digest"] != g.Digest ||
+		s["roustabout_version"] != version || s["roustabout_commit"] != commit {
+		t.Fatalf("summary %v", s)
+	}
+}
+
+// An issue-filer graph under an attest/1 grammar is refused, not run on a
+// request of the wrong shape; and an issue-filer request is refused by the
+// attestation runner.
+func TestRunVerbRefusesAnIssueFilerGraphUnderAnAttestGrammar(t *testing.T) {
+	dir := t.TempDir()
+	graphtest.WriteDir(t, dir, graphtest.Options{})
+	code, stdout, _ := runVerb(t, attestFlags(t, dir), attestRequest, okPorts{}, nil)
+	if code != 2 || !strings.Contains(stdout, `"outcome":"refused"`) {
+		t.Fatalf("exit %d stdout %s", code, stdout)
+	}
+}
+
+func TestRunVerbAttestGrammarRefusesAnIssueFilerRequest(t *testing.T) {
+	dir := t.TempDir()
+	graphtest.WriteAttestDir(t, dir, graphtest.AttestOptions{})
+	code, stdout, _ := runVerb(t, attestFlags(t, dir), `{"text":"file an issue"}`, okPorts{}, nil)
+	if code != 2 || !strings.Contains(stdout, "session_key is required") {
 		t.Fatalf("exit %d stdout %s", code, stdout)
 	}
 }

@@ -24,6 +24,9 @@ const (
 	// only a commit may be conferred a write tool, and a sink never is.
 	KindCommit = "commit"
 	KindSink   = "sink"
+	// KindCheck is a script that never writes and is not the sink: it ends ok
+	// or fail, and a fail edge fails the run (docs/attestation-graph.md).
+	KindCheck = "check"
 
 	EdgeOK   = "ok"
 	EdgeFail = "fail"
@@ -68,8 +71,14 @@ type Node struct {
 	// be one of the questions.json keys; nothing is inferred when it is absent.
 	Gate string `json:"gate,omitempty"`
 
-	// commit and sink
+	// commit, check and sink
 	Program string `json:"program,omitempty"`
+
+	// agent, in an attestation graph: the model it runs on and the access it
+	// has to the session's worktree (WorktreeRO is the only value). The
+	// worktree itself comes from the request, never from a document.
+	Model    string `json:"model,omitempty"`
+	Worktree string `json:"worktree,omitempty"`
 }
 
 // The result contract's closed vocabulary (FDR-0043 decision 18): the steps a
@@ -108,6 +117,8 @@ type kindSpec struct {
 var kindTable = map[string]kindSpec{
 	KindAgent:  {outcomes: []string{EdgeOK, EdgeFail}, required: []string{EdgeOK, EdgeFail}},
 	KindDecide: {outcomes: []string{EdgeOK, EdgeFail}, required: []string{EdgeOK, EdgeFail}},
+	// A check's ok may end the run, so only its fail edge is required.
+	KindCheck: {outcomes: []string{EdgeOK, EdgeFail}, required: []string{EdgeFail}},
 	// A commit's ok is the end of the run, so it needs no edge for it.
 	KindCommit: {outcomes: []string{EdgeOK, EdgeFail}, mayWrite: true},
 	// A sink's end never changes the run's outcome, so it has no outgoing edge.
@@ -245,31 +256,9 @@ func Digest(b []byte) string {
 // graph.digest, nodes/<id>.json, questions.json and drafter.brief.toml, the
 // layout circus issue-filer-graph builds.
 func Load(root fs.FS, expect Expect) (*Graph, error) {
-	raw, err := fs.ReadFile(root, "graph.json")
+	declared, doc, err := readDocument(root)
 	if err != nil {
-		return nil, refuse("no graph.json: %v", err)
-	}
-	digestLine, err := fs.ReadFile(root, "graph.digest")
-	if err != nil {
-		return nil, refuse("no graph.digest: %v", err)
-	}
-	declared := strings.TrimSpace(strings.SplitN(string(digestLine), "\n", 2)[0])
-	if !digestPattern.MatchString(declared) {
-		return nil, refuse("graph.digest is not sha256:<64 hex>: %q", declared)
-	}
-	if actual := Digest(raw); actual != declared {
-		return nil, refuse("graph.digest %s does not match graph.json %s", declared, actual)
-	}
-
-	var doc document
-	dec := json.NewDecoder(bytes.NewReader(raw))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&doc); err != nil {
-		return nil, refuse("graph.json: %v", err)
-	}
-
-	if rt := doc.Runtime; rt != nil && (rt.Juggler == "" || rt.Moxy == "" || rt.Glue == "") {
-		return nil, refuse("runtime must name the juggler, moxy and glue store paths")
+		return nil, err
 	}
 	g := &Graph{Digest: declared, Review: doc.Review, Runtime: doc.Runtime, Nodes: doc.Nodes, Edges: doc.Edges}
 	if err := g.validateShape(expect, doc.Entry); err != nil {
@@ -313,6 +302,35 @@ func Load(root fs.FS, expect Expect) (*Graph, error) {
 	return g, nil
 }
 
+// readDocument reads graph.json and graph.digest from root, checks the digest
+// and decodes the document. Both Load and LoadAttest start here.
+func readDocument(root fs.FS) (digest string, doc document, err error) {
+	raw, err := fs.ReadFile(root, "graph.json")
+	if err != nil {
+		return "", doc, refuse("no graph.json: %v", err)
+	}
+	digestLine, err := fs.ReadFile(root, "graph.digest")
+	if err != nil {
+		return "", doc, refuse("no graph.digest: %v", err)
+	}
+	declared := strings.TrimSpace(strings.SplitN(string(digestLine), "\n", 2)[0])
+	if !digestPattern.MatchString(declared) {
+		return "", doc, refuse("graph.digest is not sha256:<64 hex>: %q", declared)
+	}
+	if actual := Digest(raw); actual != declared {
+		return "", doc, refuse("graph.digest %s does not match graph.json %s", declared, actual)
+	}
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&doc); err != nil {
+		return "", doc, refuse("graph.json: %v", err)
+	}
+	if rt := doc.Runtime; rt != nil && (rt.Juggler == "" || rt.Moxy == "" || rt.Glue == "") {
+		return "", doc, refuse("runtime must name the juggler, moxy and glue store paths")
+	}
+	return declared, doc, nil
+}
+
 // checkGrammar checks the sentence against the host's pinned grammar, if the
 // host supplied one.
 func checkGrammar(g *Graph, expect Expect) error {
@@ -321,7 +339,7 @@ func checkGrammar(g *Graph, expect Expect) error {
 		return nil
 	}
 	if got := Digest(expect.Grammar); expect.GrammarDigest == "" || got != expect.GrammarDigest {
-		return fmt.Errorf("the grammar document %s is not the one the host pinned (%q)", got, expect.GrammarDigest)
+		return errNotPinned(got, expect.GrammarDigest)
 	}
 	gr, err := ParseGrammar(expect.Grammar)
 	if err != nil {
@@ -332,6 +350,10 @@ func checkGrammar(g *Graph, expect Expect) error {
 	}
 	g.RequestType = gr.RequestType()
 	return nil
+}
+
+func errNotPinned(got, pinned string) error {
+	return fmt.Errorf("the grammar document %s is not the one the host pinned (%q)", got, pinned)
 }
 
 func refuse(format string, args ...any) error {
