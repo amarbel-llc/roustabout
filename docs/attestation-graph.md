@@ -1,8 +1,39 @@
 # The attestation graph on the merge host
 
-Status: design, operator-approved on the three recommendations below
-(roustabout#6, 2026-11-12). Only the first slice (the grammar right's name) is
-built. Context decided by the operator: circus EPIC 0001 and FDR 0042 as amended.
+Design, operator-approved on the three recommendations below (roustabout#6,
+2026-11-12). Context decided by the operator: circus EPIC 0001 and FDR 0042 as
+amended.
+
+## Status (read this first)
+
+Built and merged, with fakes only: the grammar right's name, the grammar's
+`request` field, `request.ParseAttest`, `graph.LoadAttest`, the `check` kind,
+`run.AttestRunner`, findings collection, the `attest/1` record, and
+`roustabout check` for attestation graphs. `just test-conformance` pins the
+issue-filer path (75 scenarios) and has not moved. Order, below, says what each
+step is.
+
+Not done, said plainly:
+
+- **Nothing has run against a live juggler or ringmaster.** Every test uses
+  fakes; in particular, that juggler's `message` is an agent's final text is
+  read from the existing adapter, not observed.
+- **`model` and `worktree: "ro"` are validated and covered by the graph
+  digest, but not passed to juggler.** This repo knows of no `juggler spawn`
+  flag for either, and the read-only mount is spinclass's lane.
+- **The run root is minted under `--issuer`, not under the requesting
+  principal's grant chain.**
+- **The P0 to P2 rule is not enforced by roustabout.** It is the `check`
+  program's, a host-allowlisted program; no such program is in this repo.
+
+Blocked on others:
+
+- **Checking `roustabout:grammar:<digest>` against the run's grant chain**
+  waits for grants to exist (spinclass FDR 0032, moxy FDR 0013). Until then the
+  digest pin in `graph.Expect` is the only authority.
+
+Open for the operator (numbered; not decided here): where the minter credential
+lives on a dev host, and the request transport. See "Open", below.
 
 ## What is decided elsewhere
 
