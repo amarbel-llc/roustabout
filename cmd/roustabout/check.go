@@ -51,16 +51,38 @@ func executeCheck(args []string, stdout, stderr io.Writer) int {
 		}
 		expect.Grammar = b
 	}
-	g, err := graph.Load(os.DirFS(fs.Arg(0)), expect)
-	if err != nil {
-		return refused("%v", err)
+	// The pinned grammar chooses the request type, and so the loader, as `run`
+	// does; a grammar that cannot be read as pinned falls through to the
+	// issue-filer loader, which reports it.
+	requestType := graph.RequestIssueFiler
+	if grammar != "" {
+		if rt, err := graph.PinnedRequestType(expect); err == nil {
+			requestType = rt
+		}
 	}
+	var digest string
 	var steps []string
-	for _, s := range g.Result {
-		steps = append(steps, s.Step)
+	if requestType == graph.RequestAttest {
+		a, err := graph.LoadAttest(os.DirFS(fs.Arg(0)), expect)
+		if err != nil {
+			return refused("%v", err)
+		}
+		digest = a.Digest
+		for _, s := range a.Result {
+			steps = append(steps, s.Step)
+		}
+	} else {
+		g, err := graph.Load(os.DirFS(fs.Arg(0)), expect)
+		if err != nil {
+			return refused("%v", err)
+		}
+		digest = g.Digest
+		for _, s := range g.Result {
+			steps = append(steps, s.Step)
+		}
 	}
 	out := map[string]any{
-		"outcome": "ok", "graph_digest": g.Digest, "grammar_checked": grammar != "", "result": steps,
+		"outcome": "ok", "graph_digest": digest, "grammar_checked": grammar != "", "request_type": requestType, "result": steps,
 	}
 	if grammar != "" {
 		out["grammar_right"] = graph.GrammarRight(grammarDigest)

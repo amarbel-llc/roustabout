@@ -113,6 +113,9 @@ a grammar is pinned.
      juggler (`juggler spawn` has no flag for either that this repo knows of)
      and the read-only mount is spinclass's lane; the run root is minted
      under `--issuer`, not yet under the requesting principal's grant chain.
+   - `roustabout check` follows the pinned grammar as `run` does: it loads an
+     attestation graph under an `attest/1` grammar, and reports `request_type`
+     (also for issue-filer graphs) and `grammar_right`.
 4. The audit and cutoff nodes: held for the operator with the findings schema.
    `check` and `commit` scripts are given the request file (and the commit its
    token) and `ATTEST_*` environment variables naming the run, the graph and
