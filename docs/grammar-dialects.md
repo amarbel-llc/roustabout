@@ -14,43 +14,44 @@ labelled as unverified.
 
 ## Shared core (duplicated verbatim)
 
-Source of truth: this file, `docs/grammar-dialects.md` in the roustabout repo,
-the block between the two marker lines below. Proposed: it is where the
-envelope is implemented today, and the only place. The juggler note (proposed:
-FDR 0023) copies the block byte for byte; a copy that differs is a bug in the
-copy, fixed by re-copying. Operator ruling relayed 2026-11-12: the grammar is a
-pinned schema for authored documents, with two dialects, juggler for turns and
-roustabout for agents, tools and graphs.
+The operator ruled (relayed 2026-11-12): the grammar is a pinned schema for
+authored documents, with two dialects, juggler for turns and roustabout for
+agents, tools and graphs; the pinning and loader machinery is shared, and
+runtime records are mapped, not validated. The block below is juggler's text
+(juggler FDR 0023, `docs/features/0023-turns-dialect-grammar.md`, juggler
+37be19a), copied byte for byte as it asked; the copy in juggler's FDR is the
+other half of the pair, and a copy that differs is a bug in the copy.
 
 <!-- shared-core:begin -->
 
-A **grammar** is a schema for authored documents. A **dialect** is one
-application of it: it fixes what the body of a grammar document and of a
-document checked against it may contain. Two dialects are proposed: `turns`
-(juggler) and `graph` (roustabout).
+> This section is duplicated verbatim in juggler FDR 0023 and in roustabout's
+> `docs/grammar-dialects.md`. **Source of truth for the shared core: roustabout's
+> `internal/0/graph` (`grammar.go`), because it is built and merged; if the
+> shared module of §3 option A is accepted, the module becomes the source and
+> both repos defer to it.** Dialect-specific content is each repo's own.
 
-What every dialect shares:
+1. **Pin by digest.** The host supplies the grammar document and pins it by its
+   sha256 (`sha256:<hex>`). A document never carries the grammar that
+   validates it.
+2. **Versioned, closed.** A grammar document has a `grammar` name, a `version`,
+   and a closed vocabulary; the loader refuses unknown fields and any version it
+   does not know.
+3. **Request type.** A grammar may name a request type that selects the
+   sentence parser (`issue-filer/1`, `attest/1` in roustabout; `brief/1`,
+   `script/1` proposed in juggler); absent means the dialect's default, so a
+   grammar written before the field keeps its digest.
+4. **Grammar right.** The ambient right a run of a grammar needs is named from
+   the pinned digest, `<owner>:grammar:<digest>` (roustabout's is
+   `roustabout:grammar:<digest>`), derived by the host and never supplied by a
+   document.
 
-1. **A document is checked against a pinned grammar.** The host supplies the
-   grammar document and pins it by its digest, `sha256:<hex>` of its bytes. The
-   document being checked never carries the grammar that validates it. The pin
-   check is `digest(bytes) == pinned` and nothing else.
-2. **The envelope.** Every grammar document has `grammar` (a name), `version`
-   (an integer the checker knows or refuses) and, once a second dialect
-   exists, `dialect` (a name; absent means `graph`, so documents written before
-   the field keep their digests). A checker refuses a version or dialect it does
-   not know, by name, before looking at the body.
-3. **Strict decoding.** An unknown field is refused.
-4. **The right's name.** Running anything under a grammar needs an ambient right
-   named `<interpreter>:grammar:<digest>`, where `<digest>` is the pin. The name
-   is derived from the pin and never supplied by a document. Checking the right
-   against a grant chain waits for grants to exist; until then the pin is the
-   only authority.
-
-What a dialect supplies and the other does not read: the grammar body, the
-checks on a document against it, and the interpreter that runs it.
+Not shared: roustabout's node-kind table, outcomes, edges, result steps and
+walker; juggler's turn vocabulary, tool offering, limits and stop conditions.
 
 <!-- shared-core:end -->
+
+(§3 there is juggler's section on the library's home; this note's version of it
+is part (a) below. "Option A" there is a new small module below both.)
 
 ## What exists in roustabout today
 
@@ -81,16 +82,17 @@ basis to say a turns dialect's body (as I understand it from juggler's message:
 a tagged union of turn bodies) has anything in common with it, and the two
 should not be forced into one vocabulary.
 
-The shared core is the block above; the four items below are the same content
-with the reasoning. The candidate pieces are:
+The shared core is the block above. In roustabout's code its four points are:
 
 1. **Digest and pin**: `Digest(bytes)` as `sha256:<hex>`, and "these bytes are
-   the ones the host pinned".
-2. **The envelope**: `grammar` (name), `version`, and a dialect name, parsed
-   strictly, so a document of another dialect is refused by name before its
-   body is looked at.
-3. **The right's name**: `<interpreter>:grammar:<digest>`.
-4. **Strict decoding**: unknown fields refused.
+   the ones the host pinned" (`graph.Digest`, `pinnedGrammar`).
+2. **Versioned, closed**: `grammar` (name), `version`, unknown fields and
+   unknown versions refused (`ParseGrammar`).
+3. **Request type**: the grammar's `request` field, `issue-filer/1` by default,
+   which selects the loader and runner (`PinnedRequestType`). This note does not
+   add a separate `dialect` field: the request type already selects the sentence
+   parser, and the dialect follows from the interpreter that owns it.
+4. **The right's name**: `<owner>:grammar:<digest>` (`GrammarRight`).
 
 Options:
 
@@ -112,17 +114,18 @@ is the layer above juggler and ringmaster (circus FDR 0043), so juggler
 importing a roustabout package would invert the layering, and everything
 under roustabout's `internal/` cannot be imported at all. It would be a small
 module both import: a new repo, or an existing one below both. That is the
-operator's to choose.
+operator's to choose. Juggler's FDR 0023 (§3) reaches the same conclusion and
+lists the module's content as `Digest`, `Pin`, a strict versioned `Decode`,
+`Right(owner, digest)` and a request-type registry.
 
 **What roustabout would change to consume it (option C).** `Digest`,
-`errNotPinned`, and the pin check in `pinnedGrammar` move out and are imported;
-the grammar document gains an optional `dialect` field that defaults to the
-graph dialect when absent, as `request` does, so every existing grammar
-document keeps its digest. No node, edge, record or summary changes. The
-proof that the live issue-filer graph is unchanged is the existing one: the 75
-conformance scenarios stay at 0 differing, the issue-filer graph's digest does
-not move, and the grammar documents already pinned do not move either, because
-the new field is left out when it is the default.
+`errNotPinned`, the pin check in `pinnedGrammar` and the right's name move out
+and are imported; the request types stay a registry roustabout fills in. No
+grammar document, node, edge, record or summary changes. The proof that the live
+issue-filer graph is unchanged is the existing one: the 75 conformance scenarios
+stay at 0 differing, the issue-filer graph's digest does not move, and a test
+that a grammar document pinned before the change still has the same digest
+guards the grammar files.
 
 ## (b) The boundary
 
@@ -199,6 +202,12 @@ digest? I do not know of one.
 Roustabout would also not interpret the loop's outcome beyond what it does
 today: the run ended with a state, a final body and a ledger.
 
+Juggler's answer (FDR 0023, from its message): `spawn` has no such flag today;
+it proposes `--dialect <file> --dialect-digest sha256:...`, optional, with
+today's briefs an implicit dialect `brief/1` so nothing changes without it.
+That fits option 2 here: the node's `{dialect, digest}` maps to those two
+arguments. It is a proposal in juggler, not something roustabout can call.
+
 ## (e) Risks
 
 - **A premature shared library** shaped by one consumer (the reason for
@@ -208,9 +217,10 @@ today: the run ended with a state, a final body and a ledger.
   sequence of turn bodies. Sharing the envelope is plausible; sharing the body
   language would be a forced fit, and the shared note should say "dialect" and
   mean it.
-- **Adding `dialect` to roustabout's grammar documents** changes what a
-  document means; the defaulting rule (absent means the graph dialect) is what
-  keeps digests, and a test that a pre-existing grammar's digest is unchanged is
+- **A new field on grammar documents** (the `request` field, already added, is
+  the example) changes what a document means; the defaulting rule (absent means
+  the dialect's default) is what keeps digests, and a test that a pre-existing
+  grammar's digest is unchanged is
   the guard.
 - **Coupling through the ledger.** If roustabout's ledger cites a run's turn
   log, juggler's identifier for it becomes a long-lived interface.
@@ -228,14 +238,20 @@ today: the run ended with a state, a final body and a ledger.
 2. **If a library is built, where does it live?** It must sit below both, so
    not in roustabout. Recommendation: a new small module; the operator names the
    repo.
-3. **Add `dialect` to the grammar envelope, defaulting to the graph dialect?**
-   Recommendation: yes, with the digest-stability test.
-4. **Right naming across dialects**: `<interpreter>:grammar:<digest>`.
-   Recommendation: yes.
+3. **Keep the dialect implied by the request type and the interpreter, with no
+   separate `dialect` field in the envelope?** Recommendation: yes; the shared
+   core (point 3) already has the request type select the sentence parser, and
+   a second selector could disagree with the first.
+4. **Right naming across dialects**: `<owner>:grammar:<digest>` (the shared
+   core, point 4). Recommendation: yes.
 5. **An agent node's loop reference** as `{dialect, digest}` with a grammar
    constraint on allowed dialects. Recommendation: yes (option 2).
 6. **Replace the findings-in-a-message convention with a structured terminal
-   body** once juggler offers one. Recommendation: yes; juggler's to say when.
+   body** once juggler offers one. Juggler proposes an optional `result` on the
+   terminal body, an additive change to the on-disk turn format, and has made it
+   an open operator question of its own (FDR 0023, open question 4).
+   Recommendation: yes if that is accepted; the decision is juggler's and the
+   operator's, and roustabout changes only its adapter.
 
 ## What this depends on
 
