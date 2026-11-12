@@ -1,0 +1,1 @@
+juggler: spawn: posting the run input to rk-rec@rooms.test: troupe muc: exit status 1: troupe muc send: injected failure (run rk-rec saved as pending; retry with the same --run-key)

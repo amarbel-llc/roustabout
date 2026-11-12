@@ -101,12 +101,13 @@ recordings are and are not, the layout, refreshing), `testdata/selftest/` (six
 hand-written, labelled-synthetic cases that exercise the runner and are not
 juggler output) and `just load-juggler-testdata DIR COMMIT` (tested on a
 throwaway capture: it refuses a case with a missing or extra file and takes a good
-one in, writing COMMIT and keeping the README). **Not built: the recordings
-themselves and `testdata/juggler-expect.json`.** Until `testdata/juggler/COMMIT`
-exists, `TestRecordedJugglerOutput` skips, visibly. They arrive when juggler's
-capture package merges (its merge 2), as a directory I take in with the recipe;
-the expect file is then written by hand against the real case names and values.
-Juggler reports (message, 2026-11-12) 14 cases byte-stable across two fresh worlds
+one in, writing COMMIT and keeping the README). **The recordings are now in** (juggler `ba290a04457db6f629ce6371bcc61c6336642ede`,
+its `packages.adapter-cases`: 14 cases and `NORMALISE`, built read-only from that
+commit and taken in with the recipe), and `testdata/juggler-expect.json` is
+written by hand against the real bytes; `TestRecordedJugglerOutput` runs all 14
+(checked by breaking one expectation and seeing it fail). Not recorded, by
+juggler's capture: `spawn --wait` exit 5, aborted agents, and the non-zero exits of
+`decide` and `resolve`. Juggler reports (message, 2026-11-12) 14 cases byte-stable across two fresh worlds
 in its bats lane, its runner reading this contract file exactly, and `decide`
 accepting the contract's stdin; those are juggler's results, not run here.
 

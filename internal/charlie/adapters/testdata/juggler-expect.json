@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "cases": {
+    "new-run-ok": {"verb": "spawn-new-run", "want": {"exit_code": 0, "run_job": "@nonempty", "room": "@nonempty", "root_stanza": "@nonempty", "root_jid": "@jid", "root_principal": "@nonempty", "pending": false, "existing": false, "existing_resolved": "false"}},
+    "new-run-existing": {"verb": "spawn-new-run", "want": {"exit_code": 0, "run_job": "@nonempty", "pending": false, "existing": true, "existing_resolved": "false"}},
+    "new-run-existing-resolved": {"verb": "spawn-new-run", "want": {"exit_code": 0, "run_job": "@nonempty", "pending": false, "existing": true, "existing_resolved": "true"}},
+    "new-run-pending-failure": {"verb": "spawn-new-run", "want": {"exit_code": 1, "pending": true, "run_job": "", "existing": false}},
+    "wait-succeeded": {"verb": "spawn-wait", "want": {"exit_code": 0, "state": "succeeded", "message": "evaluator passed", "has_result": false, "result_error": "", "cannot_complete": false}},
+    "wait-result": {"verb": "spawn-wait", "want": {"exit_code": 0, "state": "succeeded", "has_result": true, "result": "{\"findings\":[1]}", "result_error": "", "cannot_complete": false}},
+    "wait-result-null": {"verb": "spawn-wait", "want": {"exit_code": 0, "state": "succeeded", "has_result": true, "result": "null", "result_error": ""}},
+    "wait-result-error": {"verb": "spawn-wait", "want": {"exit_code": 0, "state": "succeeded", "has_result": false, "result_error": "the final message is not valid JSON"}},
+    "wait-failed-cannot-complete": {"verb": "spawn-wait", "want": {"exit_code": 2, "state": "failed", "cannot_complete": true, "cannot_complete_reason": "no repo matches", "has_result": false}},
+    "wait-failed-with-result": {"verb": "spawn-wait", "want": {"exit_code": 2, "state": "failed", "has_result": true, "result": "{\"findings\":[1]}", "cannot_complete": false}},
+    "wait-dead-agent": {"verb": "spawn-wait", "want": {"exit_code": 4, "state": "interrupted", "has_result": false, "result_error": "", "cannot_complete": false}},
+    "decide-ok": {"verb": "decide", "want": {"exit_code": 0, "has_answers": true, "answers_keys": "no-sensitive-content,right-repo-not-a-mirror"}},
+    "resolve-ok": {"verb": "resolve", "want": {"exit_code": 0, "torn_down": "true"}},
+    "resolve-already-resolved": {"verb": "resolve", "want": {"exit_code": 0, "torn_down": "true"}}
+  }
+}

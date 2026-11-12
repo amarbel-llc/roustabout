@@ -2,8 +2,16 @@
 
 What the juggler adapter (`../../juggler.go`) is tested against in
 `recorded_test.go`: the bytes the real standalone juggler printed for each case.
-There are no recordings in this directory until `COMMIT` exists; until then
-`TestRecordedJugglerOutput` skips, visibly.
+`COMMIT` names the juggler commit they were captured from (at the time of
+writing, juggler `ba290a04457db6f629ce6371bcc61c6336642ede`, its
+`packages.adapter-cases`). If `COMMIT` is absent, `TestRecordedJugglerOutput`
+skips, visibly.
+
+**What is not recorded.** Juggler's capture has no case for `spawn --wait` exit 5
+(still running) or for aborted agents, and none for the non-zero exits of `decide`
+and `resolve`. The adapter's handling of those exits is covered by its own unit
+tests and by juggler's lane (which checks every exit the contract lists), not by a
+recording here.
 
 ## What these are, and are not
 

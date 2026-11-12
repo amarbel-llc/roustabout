@@ -1,0 +1,1 @@
+["spawn","--new-run","--run-key","rk-rec","--input","/world/input.json","--room-domain","rooms.test","--operator-jid","operator@xmpp.test"]

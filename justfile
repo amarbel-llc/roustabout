@@ -146,9 +146,11 @@ load-juggler-testdata dir commit:
     rm -f "$dest/NORMALISE"
     for c in "$src"/*/; do
       [ -d "$c" ] || continue
-      cp -r "$c" "$dest/$(basename "$c")"
+      # --no-preserve=mode: a capture built by nix is read-only, and a read-only
+      # copy could not be replaced by the next refresh.
+      cp -r --no-preserve=mode "$c" "$dest/$(basename "$c")"
     done
-    cp "$src/NORMALISE" "$dest/NORMALISE"
+    cp --no-preserve=mode "$src/NORMALISE" "$dest/NORMALISE"
     printf '%s\n' "{{ commit }}" > "$dest/COMMIT"
     echo "took $cases cases from $src (juggler {{ commit }}) into $dest; update internal/charlie/adapters/testdata/juggler-expect.json by hand to match"
 

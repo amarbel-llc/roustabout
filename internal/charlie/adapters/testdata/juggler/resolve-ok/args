@@ -1,0 +1,1 @@
+["resolve","juggler-run-00000001","--state=failed","--reason={\"why\":\"contract check\"}","--fallback-artifacts=[{\"tool\":\"orgzly_note\",\"kind\":\"note\",\"uris\":[\"orgzly://note/9\"]}]"]
