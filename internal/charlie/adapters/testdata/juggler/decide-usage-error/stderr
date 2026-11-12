@@ -1,0 +1,2 @@
+juggler: decide: --room is required
+usage: juggler decide --model <name> --room <muc-jid> --parent <stanza-id> [--min-confidence 0.5] [--question <id>] [--run-key <key>] [--troupe <path>]  (payload {"state","questions"} on stdin)

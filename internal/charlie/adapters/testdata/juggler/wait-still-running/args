@@ -1,0 +1,1 @@
+["spawn","--brief","/world/issue-filer.toml","--task","/world/task.txt","--run-key","rk-rec","--wait","--timeout","1s","--stop-grace","1s"]

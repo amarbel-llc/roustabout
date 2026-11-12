@@ -37,6 +37,8 @@ type expectCase struct {
 	// Want maps a field of the adapter's response to what it must hold: a JSON
 	// string (exact, or "@nonempty", "@jid", "@json"), a number, or a bool.
 	Want map[string]any `json:"want"`
+	// Note says why a case is worth having, for a reader of the expect file.
+	Note string `json:"note,omitempty"`
 }
 
 // responseFields reads the adapter's response for the verb into named fields.

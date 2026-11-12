@@ -3,15 +3,22 @@
 What the juggler adapter (`../../juggler.go`) is tested against in
 `recorded_test.go`: the bytes the real standalone juggler printed for each case.
 `COMMIT` names the juggler commit they were captured from (at the time of
-writing, juggler `ba290a04457db6f629ce6371bcc61c6336642ede`, its
+writing, juggler `5d363acd4b5849bc8922c1b9f80888f8bdc338f3`, its
 `packages.adapter-cases`). If `COMMIT` is absent, `TestRecordedJugglerOutput`
 skips, visibly.
 
-**What is not recorded.** Juggler's capture has no case for `spawn --wait` exit 5
-(still running) or for aborted agents, and none for the non-zero exits of `decide`
-and `resolve`. The adapter's handling of those exits is covered by its own unit
-tests and by juggler's lane (which checks every exit the contract lists), not by a
-recording here.
+**Cases whose args differ from the adapter's.** `wait-still-running` carries an
+extra `--stop-grace 1s` (and a 1s timeout) and `decide-below-threshold` an extra
+`--min-confidence 1`; the recorded `args` show what ran. Some failures print only
+to stderr (usage errors, `resolve-no-minter`), so `stdout` is empty there. And
+`decide-room-post-failed` exits 3 yet prints `answers`: a caller must key on the
+exit code, not on `answers` being present.
+
+**What is recorded, and what is not.** The 22 cases cover `spawn --wait` exits 0,
+1, 2, 3, 4 and 5, `spawn --new-run` exits 0 and 1, `decide` exits 0, 1, 2, 3 and 4,
+and `resolve` exits 0 and 1. A behaviour juggler adds later is not here until it is
+captured. The contract's `exit` list is checked against the real binary by
+juggler's lane, not by these recordings.
 
 ## What these are, and are not
 

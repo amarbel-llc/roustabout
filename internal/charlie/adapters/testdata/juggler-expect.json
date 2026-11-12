@@ -14,6 +14,14 @@
     "wait-dead-agent": {"verb": "spawn-wait", "want": {"exit_code": 4, "state": "interrupted", "has_result": false, "result_error": "", "cannot_complete": false}},
     "decide-ok": {"verb": "decide", "want": {"exit_code": 0, "has_answers": true, "answers_keys": "no-sensitive-content,right-repo-not-a-mirror"}},
     "resolve-ok": {"verb": "resolve", "want": {"exit_code": 0, "torn_down": "true"}},
-    "resolve-already-resolved": {"verb": "resolve", "want": {"exit_code": 0, "torn_down": "true"}}
+    "resolve-already-resolved": {"verb": "resolve", "want": {"exit_code": 0, "torn_down": "true"}},
+    "wait-aborted": {"verb": "spawn-wait", "want": {"exit_code": 3, "state": "aborted", "has_result": false, "cannot_complete": false}},
+    "wait-still-running": {"verb": "spawn-wait", "want": {"exit_code": 5, "state": "running", "has_result": false, "cannot_complete": false}, "note": "args carry --stop-grace 1s and --timeout 1s, which the adapter does not send; the recorded args show what ran"},
+    "wait-usage-error": {"verb": "spawn-wait", "want": {"exit_code": 1, "state": "", "has_result": false}, "note": "stdout is empty; the failure is on stderr only"},
+    "decide-usage-error": {"verb": "decide", "want": {"exit_code": 1, "has_answers": false, "reason": ""}, "note": "stdout is empty; the failure is on stderr only"},
+    "decide-no-choice": {"verb": "decide", "want": {"exit_code": 2, "has_answers": false, "reason": "@nonempty"}, "note": "the endpoint failed: stdout has reason, http_status and raw, no answers"},
+    "decide-room-post-failed": {"verb": "decide", "want": {"exit_code": 3, "has_answers": true}, "note": "exit 3 AND an answers object: the answers were produced but the stanza could not be posted. A caller must key on the exit code, not on answers being present; roustabout's judge step treats any non-zero exit as a failure of the judge"},
+    "decide-below-threshold": {"verb": "decide", "want": {"exit_code": 4, "has_answers": true, "reason": "@nonempty"}, "note": "exit 4 with answers: below the threshold juggler was given. Recorded with an extra --min-confidence 1 in args; the adapter always sends --min-confidence 0 and applies the threshold itself, so it does not see exit 4 from its own calls"},
+    "resolve-no-minter": {"verb": "resolve", "want": {"exit_code": 1, "torn_down": "nil"}, "note": "stdout is empty; the failure is on stderr only (the minter credential is unset)"}
   }
 }

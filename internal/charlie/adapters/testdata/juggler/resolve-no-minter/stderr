@@ -1,0 +1,1 @@
+juggler: resolve: $TROUPE_MINT_PASSWORD_FILE is unset: the account teardown needs the minter credential (troupe mint-revoke's self-removal path); set it (and $TROUPE_MINT_USER) or pass --keep-accounts
