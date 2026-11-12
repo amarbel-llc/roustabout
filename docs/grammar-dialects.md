@@ -12,6 +12,26 @@ something from them it says so as a question. Everything here about roustabout
 is anchored on the code at the time of writing; everything about juggler is
 labelled as unverified.
 
+## Operator rulings (relayed 2026-11-12)
+
+- **The shared module lives in juggler.** Not a new repo, and not roustabout.
+  It is a package juggler exports (not under `internal/`), and roustabout
+  imports it; roustabout sits above juggler, so the import points the right
+  way. Until it is built, the shared-core block below stays as the contract and
+  roustabout's `internal/0/graph` as its source of truth, as that block says;
+  once built, the module is the source and both notes defer to it.
+- **A structured terminal result is accepted** (juggler FDR 0023, open question
+  4): an optional `result` on the terminal body. roustabout's findings then come
+  from that value rather than from the `message` string. That is an adapter
+  change in roustabout and waits for juggler to build `result`; nothing in
+  roustabout changes before then. Plan, for when it lands: the adapter reads the
+  structured result; `ParseFindings` takes its value instead of a string; the
+  fail-closed rules (an unreadable result fails the agent) are unchanged; the
+  `message` fallback is removed, not kept, so there is one path to test.
+
+Questions 2 and 6 below are answered by these; they are left in place with the
+rulings noted.
+
 ## Shared core (duplicated verbatim)
 
 The operator ruled (relayed 2026-11-12): the grammar is a pinned schema for
@@ -113,8 +133,8 @@ Where a library would live if built (option C): not in roustabout. roustabout
 is the layer above juggler and ringmaster (circus FDR 0043), so juggler
 importing a roustabout package would invert the layering, and everything
 under roustabout's `internal/` cannot be imported at all. It would be a small
-module both import: a new repo, or an existing one below both. That is the
-operator's to choose. Juggler's FDR 0023 (§3) reaches the same conclusion and
+module both import: a new repo, or an existing one below both. The operator
+ruled it lives in juggler. Juggler's FDR 0023 (§3) reaches the same conclusion and
 lists the module's content as `Digest`, `Pin`, a strict versioned `Decode`,
 `Right(owner, digest)` and a request-type registry.
 
@@ -236,8 +256,8 @@ arguments. It is a proposal in juggler, not something roustabout can call.
 1. **Shared code now or a shared spec first?** Recommendation: a spec first
    (option B); a library when a second dialect has a parser.
 2. **If a library is built, where does it live?** It must sit below both, so
-   not in roustabout. Recommendation: a new small module; the operator names the
-   repo.
+   not in roustabout. Recommendation: a new small module. **Ruled: in juggler**
+   (see "Operator rulings").
 3. **Keep the dialect implied by the request type and the interpreter, with no
    separate `dialect` field in the envelope?** Recommendation: yes; the shared
    core (point 3) already has the request type select the sentence parser, and
@@ -251,7 +271,8 @@ arguments. It is a proposal in juggler, not something roustabout can call.
    terminal body, an additive change to the on-disk turn format, and has made it
    an open operator question of its own (FDR 0023, open question 4).
    Recommendation: yes if that is accepted; the decision is juggler's and the
-   operator's, and roustabout changes only its adapter.
+   operator's, and roustabout changes only its adapter. **Ruled: accepted**
+   (see "Operator rulings"); roustabout waits for juggler to build it.
 
 ## What this depends on
 
