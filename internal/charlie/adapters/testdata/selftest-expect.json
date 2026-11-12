@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "cases": {
+    "new-run-ok": {"verb": "spawn-new-run", "want": {"exit_code": 0, "run_job": "@nonempty", "room": "@nonempty", "root_stanza": "@nonempty", "root_jid": "@jid", "pending": false, "existing": false, "existing_resolved": "nil"}},
+    "new-run-pending-failure": {"verb": "spawn-new-run", "want": {"exit_code": 1, "pending": true, "run_job": ""}},
+    "wait-result-null": {"verb": "spawn-wait", "want": {"exit_code": 0, "state": "succeeded", "has_result": true, "result": "null", "result_error": ""}},
+    "wait-result-error": {"verb": "spawn-wait", "want": {"exit_code": 0, "has_result": false, "result_error": "@nonempty"}},
+    "resolve-unclean": {"verb": "resolve", "want": {"exit_code": 0, "torn_down": "false", "unclean": "@nonempty"}},
+    "decide-ok": {"verb": "decide", "want": {"exit_code": 0, "has_answers": true, "answers_keys": "no-sensitive-content,right-repo-not-a-mirror"}}
+  }
+}

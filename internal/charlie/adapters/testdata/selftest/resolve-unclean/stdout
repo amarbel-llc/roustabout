@@ -1,0 +1,1 @@
+{"run_job":"job-1","state":"failed","torn_down":false,"teardown":[{"ok":false,"jid":"a@xmpp.example.invalid","reason":"kept: still running"}]}

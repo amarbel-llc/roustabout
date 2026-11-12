@@ -90,6 +90,26 @@ Rules (juggler's corrections incorporated):
 On our side a test renders each verb's argv with fixed placeholder values from the
 adapter and compares it to the file, so the file cannot drift from the code.
 
+### Slice 2 status
+
+Built here: `internal/charlie/adapters/recorded_test.go` (the runner: for each case
+directory it hands the recorded stdout, rc and stderr to the adapter through the
+test binary standing in for juggler, so the adapter's own exec and parsing code
+runs, and checks the fields the expect file names; the case directories and the
+expect file must name the same cases), `testdata/juggler/README.md` (what the
+recordings are and are not, the layout, refreshing), `testdata/selftest/` (six
+hand-written, labelled-synthetic cases that exercise the runner and are not
+juggler output) and `just codemod-juggler-testdata DIR COMMIT` (tested on a
+throwaway capture: it refuses a case with a missing or extra file and takes a good
+one in, writing COMMIT and keeping the README). **Not built: the recordings
+themselves and `testdata/juggler-expect.json`.** Until `testdata/juggler/COMMIT`
+exists, `TestRecordedJugglerOutput` skips, visibly. They arrive when juggler's
+capture package merges (its merge 2), as a directory I take in with the recipe;
+the expect file is then written by hand against the real case names and values.
+Juggler reports (message, 2026-11-12) 14 cases byte-stable across two fresh worlds
+in its bats lane, its runner reading this contract file exactly, and `decide`
+accepting the contract's stdin; those are juggler's results, not run here.
+
 ## 2. Recorded output (adapter test data)
 
 `internal/charlie/adapters/testdata/juggler/<case>/{args,stdout,rc,stderr}`, plus

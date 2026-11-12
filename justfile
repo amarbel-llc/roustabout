@@ -112,6 +112,46 @@ codemod-conformance-pins *scenarios:
     rou=$(nix build --no-link --print-out-paths)/bin/roustabout
     PIN=1 nix shell --inputs-from . {{ conformance_tools }} -c bash conformance/run.bash "$kit" "$rou" {{ scenarios }}
 
+# Takes a capture of the real juggler's output into the adapter test data
+# (internal/charlie/adapters/testdata/juggler, docs/juggler-contract-format.md).
+# DIR is the capture juggler's repo builds: one directory per case holding args,
+# stdout, rc and stderr, plus NORMALISE. COMMIT is the juggler commit it was
+# captured from. Replaces the case directories and NORMALISE, writes COMMIT,
+# leaves the README and ../juggler-expect.json alone, and fails if a case lacks
+# one of the four files or holds another. Read the diff in git before committing.
+#
+# copy a juggler capture into the adapter test data
+[group('codemod')]
+codemod-juggler-testdata dir commit:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    src="{{ dir }}"
+    dest=internal/charlie/adapters/testdata/juggler
+    [ -d "$src" ] || { echo "no such directory: $src" >&2; exit 1; }
+    [ -f "$src/NORMALISE" ] || { echo "$src has no NORMALISE file: say how the capture was normalised" >&2; exit 1; }
+    [ -n "{{ commit }}" ] || { echo "COMMIT is empty" >&2; exit 1; }
+    cases=0
+    for c in "$src"/*/; do
+      [ -d "$c" ] || continue
+      cases=$((cases + 1))
+      names=$(cd "$c" && find . -mindepth 1 | sed 's|^\./||' | sort | tr '\n' ' ')
+      [ "$names" = "args rc stderr stdout " ] || {
+        echo "case $(basename "$c") holds [$names], want exactly: args rc stderr stdout" >&2
+        exit 1
+      }
+    done
+    [ "$cases" -gt 0 ] || { echo "$src holds no case directories" >&2; exit 1; }
+    mkdir -p "$dest"
+    find "$dest" -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} +
+    rm -f "$dest/NORMALISE"
+    for c in "$src"/*/; do
+      [ -d "$c" ] || continue
+      cp -r "$c" "$dest/$(basename "$c")"
+    done
+    cp "$src/NORMALISE" "$dest/NORMALISE"
+    printf '%s\n' "{{ commit }}" > "$dest/COMMIT"
+    echo "took $cases cases from $src (juggler {{ commit }}) into $dest; update internal/charlie/adapters/testdata/juggler-expect.json by hand to match"
+
 codemod-fmt: codemod-fmt-tree
 
 # format the tree in place (repair mode) via `nix fmt`
