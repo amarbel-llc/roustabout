@@ -12,6 +12,46 @@ something from them it says so as a question. Everything here about roustabout
 is anchored on the code at the time of writing; everything about juggler is
 labelled as unverified.
 
+## Shared core (duplicated verbatim)
+
+Source of truth: this file, `docs/grammar-dialects.md` in the roustabout repo,
+the block between the two marker lines below. Proposed: it is where the
+envelope is implemented today, and the only place. The juggler note (proposed:
+FDR 0023) copies the block byte for byte; a copy that differs is a bug in the
+copy, fixed by re-copying. Operator ruling relayed 2026-11-12: the grammar is a
+pinned schema for authored documents, with two dialects, juggler for turns and
+roustabout for agents, tools and graphs.
+
+<!-- shared-core:begin -->
+
+A **grammar** is a schema for authored documents. A **dialect** is one
+application of it: it fixes what the body of a grammar document and of a
+document checked against it may contain. Two dialects are proposed: `turns`
+(juggler) and `graph` (roustabout).
+
+What every dialect shares:
+
+1. **A document is checked against a pinned grammar.** The host supplies the
+   grammar document and pins it by its digest, `sha256:<hex>` of its bytes. The
+   document being checked never carries the grammar that validates it. The pin
+   check is `digest(bytes) == pinned` and nothing else.
+2. **The envelope.** Every grammar document has `grammar` (a name), `version`
+   (an integer the checker knows or refuses) and, once a second dialect
+   exists, `dialect` (a name; absent means `graph`, so documents written before
+   the field keep their digests). A checker refuses a version or dialect it does
+   not know, by name, before looking at the body.
+3. **Strict decoding.** An unknown field is refused.
+4. **The right's name.** Running anything under a grammar needs an ambient right
+   named `<interpreter>:grammar:<digest>`, where `<digest>` is the pin. The name
+   is derived from the pin and never supplied by a document. Checking the right
+   against a grant chain waits for grants to exist; until then the pin is the
+   only authority.
+
+What a dialect supplies and the other does not read: the grammar body, the
+checks on a document against it, and the interpreter that runs it.
+
+<!-- shared-core:end -->
+
 ## What exists in roustabout today
 
 - **A grammar document** (`internal/0/graph/grammar.go`): `grammar` (a name),
@@ -41,7 +81,8 @@ basis to say a turns dialect's body (as I understand it from juggler's message:
 a tagged union of turn bodies) has anything in common with it, and the two
 should not be forced into one vocabulary.
 
-Candidate shared core:
+The shared core is the block above; the four items below are the same content
+with the reasoning. The candidate pieces are:
 
 1. **Digest and pin**: `Digest(bytes)` as `sha256:<hex>`, and "these bytes are
    the ones the host pinned".
