@@ -122,7 +122,7 @@ codemod-conformance-pins *scenarios:
 #
 # copy a juggler capture into the adapter test data
 [group('codemod')]
-codemod-juggler-testdata dir commit:
+load-juggler-testdata dir commit:
     #!/usr/bin/env bash
     set -euo pipefail
     src="{{ dir }}"

@@ -33,7 +33,7 @@ and `decide`'s `answers` come from a fake decisions endpoint. They record the
 
 Juggler writes the capture (a flake package in its repo). To take one in:
 
-    just codemod-juggler-testdata DIR COMMIT
+    just load-juggler-testdata DIR COMMIT
 
 where DIR is the capture's directory and COMMIT the juggler commit it came from.
 The recipe replaces the case directories and `NORMALISE`, writes `COMMIT`, and

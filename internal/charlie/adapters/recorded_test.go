@@ -18,7 +18,7 @@ import (
 // The adapter's parsing of juggler's output, tested on recorded bytes
 // (docs/juggler-contract-format.md). A case is a directory of
 // {args, stdout, rc, stderr}, captured from the real juggler binary on its
-// no-model lane and written by `just codemod-juggler-testdata`; what the adapter
+// no-model lane and written by `just load-juggler-testdata`; what the adapter
 // must read out of it is written by hand in an expect file. The stdout is
 // handed to the adapter through the test binary standing in for juggler, so the
 // adapter's own exec and parsing code is what runs.

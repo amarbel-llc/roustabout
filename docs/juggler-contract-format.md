@@ -99,7 +99,7 @@ runs, and checks the fields the expect file names; the case directories and the
 expect file must name the same cases), `testdata/juggler/README.md` (what the
 recordings are and are not, the layout, refreshing), `testdata/selftest/` (six
 hand-written, labelled-synthetic cases that exercise the runner and are not
-juggler output) and `just codemod-juggler-testdata DIR COMMIT` (tested on a
+juggler output) and `just load-juggler-testdata DIR COMMIT` (tested on a
 throwaway capture: it refuses a case with a missing or extra file and takes a good
 one in, writing COMMIT and keeping the README). **Not built: the recordings
 themselves and `testdata/juggler-expect.json`.** Until `testdata/juggler/COMMIT`
@@ -153,7 +153,9 @@ run twice and normalised gives identical bytes; until it has, this is a plan.
   until the flake input lands and is found only when someone syncs.
 - **roustabout** (this repo): the contract file and the test that keeps it equal to
   the adapters; the testdata directory layout, the `expect.json` per case and the
-  adapter tests over them; and `just codemod-juggler-testdata DIR COMMIT`, which
+  adapter tests over them; and `just load-juggler-testdata DIR COMMIT` (named
+  `load`, not `codemod`: conformist's justfile-task-hierarchy lint wants every
+  `codemod-` leaf in an aggregate, and this one takes arguments), which
   copies a capture in, writes `COMMIT`, and fails if a case directory is missing or
   has an extra file. roustabout is the only writer of its testdata; juggler is the
   only author of the capture.
