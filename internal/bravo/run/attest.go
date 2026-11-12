@@ -36,13 +36,15 @@ type AttestRunner struct {
 // AttestRecord is the attest/1 result record: the verdict, the graph digest
 // and the run-level ledger, in the record a gate digests.
 type AttestRecord struct {
-	State       string           `json:"state"`
-	RunKey      string           `json:"run_key"`
-	GraphDigest string           `json:"graph_digest"`
-	SessionKey  string           `json:"session_key"`
-	MergeBase   string           `json:"merge_base"`
-	Head        string           `json:"head"`
-	Ledger      []rr.LedgerEntry `json:"ledger"`
+	State       string `json:"state"`
+	RunKey      string `json:"run_key"`
+	GraphDigest string `json:"graph_digest"`
+	SessionKey  string `json:"session_key"`
+	MergeBase   string `json:"merge_base"`
+	Head        string `json:"head"`
+	// Findings counts what the agents reported, by severity.
+	Findings map[string]int   `json:"findings"`
+	Ledger   []rr.LedgerEntry `json:"ledger"`
 	// Reason is left out of a passed record.
 	Reason string `json:"reason,omitempty"`
 }
@@ -111,6 +113,7 @@ type attestExecution struct {
 	existingResolved     *bool
 
 	ledger   []rr.LedgerEntry
+	findings []Finding
 	state    string // "" until a result exists
 	reason   string
 	result   []byte
@@ -275,7 +278,7 @@ func (e *attestExecution) buildRecord() {
 	rec := AttestRecord{
 		State: e.state, RunKey: e.runKey, GraphDigest: e.g.Digest,
 		SessionKey: e.req.SessionKey, MergeBase: e.req.MergeBase, Head: e.req.Head,
-		Ledger: e.ledger, Reason: e.reason,
+		Findings: countBySeverity(e.findings), Ledger: e.ledger, Reason: e.reason,
 	}
 	if rec.Ledger == nil {
 		rec.Ledger = []rr.LedgerEntry{}
@@ -356,17 +359,30 @@ func (e *attestExecution) runAgent(ctx context.Context, id string) (cond, signal
 	if !ok {
 		return fail(fmt.Sprintf("the %s agent did not complete: %s", n.Label, end.Reason))
 	}
-	e.record(id, "", "succeeded", graph.EdgeOK)
+	found, err := ParseFindings(n.Label, resp.Message)
+	if err == nil {
+		err = appendFindings(e.path("findings.jsonl"), found)
+	}
+	if err != nil {
+		return fail(fmt.Sprintf("the %s agent's findings could not be read: %v", n.Label, err))
+	}
+	e.findings = append(e.findings, found...)
+	e.record(id, "", fmt.Sprintf("succeeded (%d findings)", len(found)), graph.EdgeOK)
 	return graph.EdgeOK, ""
 }
 
-// runScript runs a check or the commit as a ringmaster job. The commit alone is
-// conferred a write token, in a 0600 file passed by path. What the scripts are
-// given beyond the request file and the run's identity is not decided here: the
-// findings the agents leave for them wait on the findings schema.
+// runScript runs a check or the commit as a ringmaster job, given the request
+// file and the findings file (one JSON object per line: agent, severity, path,
+// summary) by path. The commit alone is conferred a write token, in a 0600
+// file, as the last argument.
 func (e *attestExecution) runScript(ctx context.Context, id string) (cond, signal string) {
 	cfg, n := e.cfg(), e.g.Nodes[id]
-	args := []string{e.path("request.json")}
+	if err := appendFindings(e.path("findings.jsonl"), nil); err != nil {
+		e.reason = "the findings file could not be made"
+		e.record(id, "", "failed", graph.EdgeFail)
+		return graph.EdgeFail, ""
+	}
+	args := []string{e.path("request.json"), e.path("findings.jsonl")}
 	if graph.MayWrite(n) {
 		token, err := mintToken()
 		if err == nil {
@@ -430,7 +446,7 @@ func (e *attestExecution) onSignal(sig string) (any, int) {
 		rec := AttestRecord{
 			State: AttestFailed, RunKey: e.runKey, GraphDigest: e.g.Digest,
 			SessionKey: e.req.SessionKey, MergeBase: e.req.MergeBase, Head: e.req.Head,
-			Ledger: append([]rr.LedgerEntry{}, e.ledger...), Reason: "interrupted by SIG" + sig,
+			Findings: countBySeverity(e.findings), Ledger: append([]rr.LedgerEntry{}, e.ledger...), Reason: "interrupted by SIG" + sig,
 		}
 		record := mustJSON(rec)
 		ctx, cancel := context.WithTimeout(context.Background(), e.cfg().SignalResolveTimeout)

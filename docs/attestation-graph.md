@@ -116,13 +116,28 @@ a grammar is pinned.
    - `roustabout check` follows the pinned grammar as `run` does: it loads an
      attestation graph under an `attest/1` grammar, and reports `request_type`
      (also for issue-filer graphs) and `grammar_right`.
-4. The audit and cutoff nodes: held for the operator with the findings schema.
-   `check` and `commit` scripts are given the request file (and the commit its
-   token) and `ATTEST_*` environment variables naming the run, the graph and
-   the diff; how findings reach them is not decided.
+4. Findings (built; the operator ruled the schema, 2026-11-12: `severity`,
+   `path`, `summary`; a check fails the run on any P0 to P2 finding).
+   - An agent's final message is exactly one JSON object,
+     `{"findings":[{"severity","path","summary"}]}`, the array empty when it
+     found nothing. `severity` is `P0` to `P4`; `path` and `summary` are
+     non-empty and bounded; at most 500 findings a run. Anything else (prose,
+     an empty message, another key, a second object) fails the agent: an
+     attestation that cannot read what its agents found must not pass.
+   - roustabout writes each finding, with the reporting node's label as
+     `agent` (set by roustabout, never by the agent), to the run's
+     `findings.jsonl` (0600, one JSON object per line). `check` is given the
+     request file then the findings file; `commit` the request file, the
+     findings file, then its token. Both also get `ATTEST_*` environment
+     variables naming the run, the graph and the diff.
+   - The P0 to P2 rule is the check program's, a host-allowlisted program like
+     the commit; roustabout's part is that it reads a validated file.
+   - The coverage audit and cutoff scripts are `check` nodes the host supplies;
+     their programs are not in this repo.
 5. `attest/1`, with the ledger in the record (built: `AttestRecord`: state
    `passed` or `failed`, run key, graph digest, session key, merge base, head,
-   the ledger, and a reason on a failed run).
+   findings counts by severity (all five keys), the ledger, and a reason on a
+   failed run).
 6. Checking the right against the grant chain, once grants exist.
 
 Each step stays behind `just test-conformance`.

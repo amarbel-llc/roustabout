@@ -32,6 +32,10 @@ type attestHarness struct {
 	tokenMode os.FileMode
 	resolves  []ResolveRequest
 	onSpawn   func()
+	// message is the agent's final message for the i-th spawn; the default is
+	// no findings.
+	message      func(i int) string
+	findingsSeen string
 }
 
 func newAttestHarness(t *testing.T) *attestHarness {
@@ -53,7 +57,11 @@ func (h *attestHarness) SpawnAgent(_ context.Context, r SpawnRequest) SpawnRespo
 	if h.onSpawn != nil {
 		h.onSpawn()
 	}
-	return SpawnResponse{State: h.spawnState}
+	msg := `{"findings":[]}`
+	if h.message != nil {
+		msg = h.message(len(h.spawns) - 1)
+	}
+	return SpawnResponse{State: h.spawnState, Message: msg}
 }
 
 func (h *attestHarness) Decide(context.Context, DecideRequest) DecideResponse {
@@ -71,8 +79,12 @@ func (h *attestHarness) Resolve(_ context.Context, r ResolveRequest) ResolveResp
 func (h *attestHarness) RunScript(_ context.Context, s ScriptSpec) ScriptResult {
 	h.calls = append(h.calls, s.Label)
 	h.scripts = append(h.scripts, s)
-	if s.Label == "commit" && len(s.Args) > 1 {
-		if st, err := os.Stat(s.Args[1]); err == nil {
+	if s.Label == "check" {
+		b, _ := os.ReadFile(s.Args[1])
+		h.findingsSeen = string(b)
+	}
+	if s.Label == "commit" && len(s.Args) > 2 {
+		if st, err := os.Stat(s.Args[2]); err == nil {
 			h.tokenMode = st.Mode().Perm()
 		}
 	}
@@ -182,9 +194,84 @@ func TestAttestRunConfersTheTokenOnTheCommitAlone(t *testing.T) {
 		t.Fatalf("token mode %v", h.tokenMode)
 	}
 	for _, s := range h.scripts {
-		if s.Label == "check" && len(s.Args) != 1 {
+		if s.Label == "check" && len(s.Args) != 2 {
 			t.Fatalf("the check was given %v", s.Args)
 		}
+		if s.Label == "commit" && len(s.Args) != 3 {
+			t.Fatalf("the commit was given %v", s.Args)
+		}
+	}
+}
+
+func TestAttestRunCollectsEachAgentsFindingsForTheCheck(t *testing.T) {
+	h := newAttestHarness(t)
+	h.message = func(i int) string {
+		if i == 0 {
+			return `{"findings":[{"severity":"P1","path":"a.go","summary":"nil deref"}]}`
+		}
+		return `{"findings":[{"severity":"P3","path":"b.go","summary":"naming"},{"severity":"P0","path":"c.go","summary":"secret"}]}`
+	}
+	r, _ := h.runner(graphtest.LoadAttest(t, graphtest.AttestOptions{}))
+	if _, code := r.Run(context.Background(), attestInput(t)); code != 0 {
+		t.Fatal(code)
+	}
+	lines := strings.Split(strings.TrimSpace(h.findingsSeen), "\n")
+	if len(lines) != 3 {
+		t.Fatalf("findings file %q", h.findingsSeen)
+	}
+	var first Finding
+	if err := json.Unmarshal([]byte(lines[0]), &first); err != nil || first != (Finding{Agent: "agent-a", Severity: "P1", Path: "a.go", Summary: "nil deref"}) {
+		t.Fatalf("first %+v %v", first, err)
+	}
+	var rec map[string]any
+	if err := json.Unmarshal(h.resolves[0].Record, &rec); err != nil {
+		t.Fatal(err)
+	}
+	counts := rec["findings"].(map[string]any)
+	if counts["P0"] != 1.0 || counts["P1"] != 1.0 || counts["P2"] != 0.0 || counts["P3"] != 1.0 || counts["P4"] != 0.0 {
+		t.Fatalf("counts %v", counts)
+	}
+}
+
+// An attestation that cannot read what an agent found must not pass.
+func TestAttestRunFailsClosedOnAnUnreadableFindingsMessage(t *testing.T) {
+	for name, msg := range map[string]string{
+		"empty":            "",
+		"prose":            "looks fine to me",
+		"no findings key":  `{"ok":true}`,
+		"null findings":    `{"findings":null}`,
+		"unknown severity": `{"findings":[{"severity":"P9","path":"a","summary":"x"}]}`,
+		"no path":          `{"findings":[{"severity":"P1","path":"","summary":"x"}]}`,
+		"extra key":        `{"findings":[],"verdict":"pass"}`,
+		"two objects":      `{"findings":[]} {"findings":[]}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			h := newAttestHarness(t)
+			h.message = func(int) string { return msg }
+			r, _ := h.runner(graphtest.LoadAttest(t, graphtest.AttestOptions{}))
+			out, _ := r.Run(context.Background(), attestInput(t))
+			s := summaryOf(t, out)
+			if s["state"] != "failed" || !strings.Contains(s["reason"].(string), "findings could not be read") {
+				t.Fatalf("summary %v", s)
+			}
+			if got := strings.Join(h.calls, ","); got != "new-run,agent,sink,resolve" {
+				t.Fatalf("calls %s", got)
+			}
+		})
+	}
+}
+
+func TestParseFindingsKeepsTheAgentAndBoundsTheCount(t *testing.T) {
+	got, err := ParseFindings("agent-z", ` {"findings":[{"severity":"P4","path":"x","summary":"y"}]} `)
+	if err != nil || len(got) != 1 || got[0].Agent != "agent-z" {
+		t.Fatalf("%+v %v", got, err)
+	}
+	var many []string
+	for i := 0; i <= maxFindings; i++ {
+		many = append(many, `{"severity":"P4","path":"x","summary":"y"}`)
+	}
+	if _, err := ParseFindings("a", `{"findings":[`+strings.Join(many, ",")+`]}`); err == nil {
+		t.Fatal("more findings than a run keeps were accepted")
 	}
 }
 

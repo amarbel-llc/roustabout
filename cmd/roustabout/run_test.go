@@ -27,7 +27,9 @@ func (p okPorts) SpawnAgent(context.Context, run.SpawnRequest) run.SpawnResponse
 	if p.cancelOnSpawn != nil {
 		p.cancelOnSpawn()
 	}
-	return run.SpawnResponse{State: "succeeded"}
+	// The message is an attestation agent's findings; an issue-filer drafter's
+	// is not read on success.
+	return run.SpawnResponse{State: "succeeded", Message: `{"findings":[]}`}
 }
 
 func (okPorts) Decide(context.Context, run.DecideRequest) run.DecideResponse {
