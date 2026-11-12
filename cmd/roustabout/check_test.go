@@ -49,6 +49,9 @@ func TestCheckSaysWhetherTheDocumentWouldBeRun(t *testing.T) {
 	if code != 0 || v["grammar_checked"] != true {
 		t.Fatalf("%d %v", code, v)
 	}
+	if v["grammar_right"] != "roustabout:grammar:"+pin {
+		t.Fatalf("grammar right %v, want roustabout:grammar:%s", v["grammar_right"], pin)
+	}
 
 	code, v = check(t, append(host, "--grammar", grammarFile, "--grammar-digest", graph.Digest([]byte("other")), dir)...)
 	if code != 2 || v["outcome"] != "refused" || !strings.Contains(v["reason"].(string), "not the one the host pinned") {

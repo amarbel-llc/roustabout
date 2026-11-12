@@ -59,9 +59,13 @@ func executeCheck(args []string, stdout, stderr io.Writer) int {
 	for _, s := range g.Result {
 		steps = append(steps, s.Step)
 	}
-	return say(map[string]any{
+	out := map[string]any{
 		"outcome": "ok", "graph_digest": g.Digest, "grammar_checked": grammar != "", "result": steps,
-	}, rr.ExitOK)
+	}
+	if grammar != "" {
+		out["grammar_right"] = graph.GrammarRight(grammarDigest)
+	}
+	return say(out, rr.ExitOK)
 }
 
 func checkCommand() *command.Command {

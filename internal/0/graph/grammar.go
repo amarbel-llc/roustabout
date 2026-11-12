@@ -12,6 +12,13 @@ import (
 // (circus docs/plans/2026-10-19-bricks-reconciliation.md, section 1, "Rules").
 const GrammarVersion = 1
 
+// GrammarRight is the ambient right a run of a grammar needs, named by the
+// digest the host pins the grammar by (docs/attestation-graph.md). It is
+// derived from the pin and never supplied by a document.
+func GrammarRight(grammarDigest string) string {
+	return "roustabout:grammar:" + grammarDigest
+}
+
 // Grammar is a host-supplied document: a graph of kinds plus constraints. It
 // says shape; binding a node to reviewed content (a questions digest, a program
 // allowlist) is Expect's. A sentence never carries the grammar that validates
