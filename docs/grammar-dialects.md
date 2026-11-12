@@ -14,23 +14,29 @@ labelled as unverified.
 
 ## Operator rulings (relayed 2026-11-12)
 
-- **The shared module lives in juggler.** Not a new repo, and not roustabout.
-  It is a package juggler exports (not under `internal/`), and roustabout
-  imports it; roustabout sits above juggler, so the import points the right
-  way. Until it is built, the shared-core block below stays as the contract and
-  roustabout's `internal/0/graph` as its source of truth, as that block says;
-  once built, the module is the source and both notes defer to it.
-- **A structured terminal result is accepted** (juggler FDR 0023, open question
-  4): an optional `result` on the terminal body. roustabout's findings then come
-  from that value rather than from the `message` string. That is an adapter
-  change in roustabout and waits for juggler to build `result`; nothing in
-  roustabout changes before then. Plan, for when it lands: the adapter reads the
-  structured result; `ParseFindings` takes its value instead of a string; the
-  fail-closed rules (an unreadable result fails the agent) are unchanged; the
-  `message` fallback is removed, not kept, so there is one path to test.
+- **The shared module lives in juggler**, spec first: it is created when the
+  turns dialect has a parser, and roustabout imports it (roustabout sits above
+  juggler, so the import points the right way). Until it exists, the source of
+  truth for the shared core is the text of the block below; once it exists, the
+  module, and both notes defer to it. Questions 1 and 2 are ruled.
+- **A structured terminal result and a run transcript digest are accepted** as
+  additive on-disk changes in juggler (schema stays 1); juggler is building both
+  (FDR 0023, Q23). Question 6 is therefore accepted: roustabout's findings come
+  from the structured field rather than from the `message` string. Juggler's
+  design so far, not yet merged: opt-in via the brief, one JSON value taken from
+  the final model message on an `end_turn` run, on the terminal body and
+  `end.result` of the ledger, with `result_error` when it is not valid JSON.
+  That is an adapter change in roustabout; **it does not start before juggler's
+  change is merged and the coordinator says so.** Until then the current
+  `message`-string path stays. Plan: the adapter reads the structured field;
+  `ParseFindings` takes its value; the fail-closed rules (an unreadable result
+  fails the agent) are unchanged; whether the `message` path stays as a fallback
+  after the change is an open question for the coordinator (the relayed ruling
+  says to keep it "until juggler lands it"; two paths mean two to test, and a
+  fallback can hide a missing `result`).
 
-Questions 2 and 6 below are answered by these; they are left in place with the
-rulings noted.
+Questions 1, 2 and 6 below are answered by these (the operator left 3 to 5 at
+the recommendations); they are left in place with the rulings noted.
 
 ## Shared core (duplicated verbatim)
 
@@ -45,10 +51,12 @@ other half of the pair, and a copy that differs is a bug in the copy.
 <!-- shared-core:begin -->
 
 > This section is duplicated verbatim in juggler FDR 0023 and in roustabout's
-> `docs/grammar-dialects.md`. **Source of truth for the shared core: roustabout's
-> `internal/0/graph` (`grammar.go`), because it is built and merged; if the
-> shared module of §3 option A is accepted, the module becomes the source and
-> both repos defer to it.** Dialect-specific content is each repo's own.
+> `docs/grammar-dialects.md`. **Source of truth for the shared core: until
+> juggler's shared grammar module exists, the text of this section; once it
+> exists (it is created in juggler when the turns dialect has a parser), that
+> module, and both repos defer to it. roustabout's `internal/0/graph`
+> (`grammar.go`) is the implementation it is drawn from.** Dialect-specific
+> content is each repo's own.
 
 1. **Pin by digest.** The host supplies the grammar document and pins it by its
    sha256 (`sha256:<hex>`). A document never carries the grammar that
@@ -254,7 +262,9 @@ arguments. It is a proposal in juggler, not something roustabout can call.
 ## Questions for the operator
 
 1. **Shared code now or a shared spec first?** Recommendation: a spec first
-   (option B); a library when a second dialect has a parser.
+   (option B); a library when a second dialect has a parser. **Ruled: spec
+   first, then the module, created in juggler when the turns dialect has a
+   parser** (see "Operator rulings").
 2. **If a library is built, where does it live?** It must sit below both, so
    not in roustabout. Recommendation: a new small module. **Ruled: in juggler**
    (see "Operator rulings").
